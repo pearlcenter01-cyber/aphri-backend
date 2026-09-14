@@ -52,8 +52,8 @@ async def verify_payment(
 @router.get("/redirect", response_class=HTMLResponse)
 async def payment_redirect(tx_ref: str = ""):
     """
-    Chapa return_url lands here after checkout. Verifies the payment
-    server-side, then bounces the user's browser back into the app.
+    Chapa return_url lands here after checkout.
+    Verifies the payment server-side, then shows a success page.
     """
     db = SessionLocal()
     try:
@@ -67,14 +67,26 @@ async def payment_redirect(tx_ref: str = ""):
     finally:
         db.close()
 
-    return f"""<!DOCTYPE html>
+    return """<!DOCTYPE html>
 <html>
-  <head><meta charset="utf-8"><title>Redirecting...</title></head>
-  <body style="font-family:sans-serif;text-align:center;padding-top:80px;">
-    <p>Redirecting back to app...</p>
-    <script>
-      window.location.href = "aphri://payment/return?tx_ref={tx_ref}";
-    </script>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Payment Successful</title>
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; text-align: center; padding: 60px 24px; color: #222; background: #fafafa; margin: 0; }
+      h1 { font-size: 24px; margin-bottom: 12px; }
+      p { font-size: 16px; color: #555; line-height: 1.5; }
+      .check { font-size: 64px; margin-bottom: 16px; color: #22c55e; }
+      .card { background: #fff; max-width: 380px; margin: 0 auto; padding: 40px 24px; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="check">&#10003;</div>
+      <h1>Payment Successful</h1>
+      <p>You can close this window and return to the app.</p>
+    </div>
   </body>
 </html>
 """
