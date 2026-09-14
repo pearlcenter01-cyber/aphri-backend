@@ -98,6 +98,13 @@ class User(Base):
     chapa_customer_id = Column(String(255), nullable=True)
     
     # ============================================================
+    # CREDITS
+    # ============================================================
+    credits_remaining = Column(Integer, default=0, nullable=False)
+    credits_reset_at = Column(DateTime, nullable=True)
+    plan_type = Column(String(20), nullable=True)  # 'starter', 'standard', 'premium'
+    
+    # ============================================================
     # ACCOUNT STATUS
     # ============================================================
     is_active = Column(Boolean, default=True)
@@ -162,6 +169,11 @@ class User(Base):
     @property
     def is_premium(self):
         return self.subscription_status == UserStatus.PREMIUM
+    
+    @property
+    def has_unlimited_credits(self):
+        """Premium users have unlimited credits"""
+        return self.plan_type == 'premium' or self.credits_remaining == -1
     
     @property
     def age(self):

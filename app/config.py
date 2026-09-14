@@ -42,6 +42,7 @@ class Settings:
     # ============================================================
     # CHAPA PAYMENT
     # ============================================================
+    CHAPA_PUBLIC_KEY: str = os.getenv("CHAPA_PUBLIC_KEY", "")
     CHAPA_SECRET_KEY: str = os.getenv("CHAPA_SECRET_KEY", "")
     CHAPA_WEBHOOK_SECRET: str = os.getenv("CHAPA_WEBHOOK_SECRET", "")
     CHAPA_API_URL: str = "https://api.chapa.co/v1"
@@ -80,25 +81,35 @@ class Settings:
     # SUBSCRIPTION PLANS (in ETB)
     # ============================================================
     PLANS = {
-        "monthly": {
-            "price": 299,
-            "name": "Premium Monthly",
+        "starter": {
+            "price": 300,
+            "name": "Starter",
             "duration_days": 30,
-            "description": "Full access for 30 days"
+            "credits": 20,
+            "description": "20 credits valid for 30 days"
         },
-        "quarterly": {
-            "price": 799,
-            "name": "Premium Quarterly",
-            "duration_days": 90,
-            "description": "Save 10% with quarterly plan"
+        "standard": {
+            "price": 500,
+            "name": "Standard",
+            "duration_days": 30,
+            "credits": 50,
+            "description": "50 credits valid for 30 days"
         },
-        "yearly": {
-            "price": 2499,
-            "name": "Premium Yearly",
-            "duration_days": 365,
-            "description": "Best value! Save 30%"
+        "premium": {
+            "price": 1500,
+            "name": "Premium",
+            "duration_days": 180,
+            "credits": -1,  # -1 = unlimited
+            "description": "Unlimited credits for 6 months"
         },
     }
+
+    # ============================================================
+    # CREDIT COSTS
+    # ============================================================
+    CREDIT_COST_ANSWER_QUESTIONS = 1
+    CREDIT_COST_RATE_ANSWERS = 1
+    CREDIT_COST_COMPATIBILITY_TEST = 10
     
     # ============================================================
     # FEATURE TIERS

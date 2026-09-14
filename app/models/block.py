@@ -1,8 +1,7 @@
 from sqlalchemy import Column, DateTime, ForeignKey, Index
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.database import Base
+from app.database import Base, UUIDType
 import uuid
 
 class Block(Base):
@@ -11,13 +10,13 @@ class Block(Base):
     # ============================================================
     # PRIMARY KEY
     # ============================================================
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUIDType, primary_key=True, default=lambda: str(uuid.uuid4()))
     
     # ============================================================
     # FOREIGN KEYS
     # ============================================================
-    blocker_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    blocked_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    blocker_id = Column(UUIDType, ForeignKey("users.id"), nullable=False)
+    blocked_id = Column(UUIDType, ForeignKey("users.id"), nullable=False)
     
     # ============================================================
     # TIMESTAMPS

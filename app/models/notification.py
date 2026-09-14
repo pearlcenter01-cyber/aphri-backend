@@ -1,8 +1,7 @@
 from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, Text
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.database import Base
+from app.database import Base, UUIDType
 from app.utils.constants import NotificationType
 import uuid
 
@@ -12,8 +11,8 @@ class Notification(Base):
     # ============================================================
     # PRIMARY KEY
     # ============================================================
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    id = Column(UUIDType, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(UUIDType, ForeignKey("users.id"), nullable=False)
     
     # ============================================================
     # NOTIFICATION DATA
@@ -25,7 +24,7 @@ class Notification(Base):
     # ============================================================
     # TARGET
     # ============================================================
-    target_id = Column(UUID(as_uuid=True), nullable=True)  # e.g., match_id, message_id
+    target_id = Column(UUIDType, nullable=True)  # e.g., match_id, message_id
     target_type = Column(String(50), nullable=True)  # match, message, etc.
     
     # ============================================================

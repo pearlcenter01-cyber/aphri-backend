@@ -1,8 +1,7 @@
 from sqlalchemy import Column, String, DateTime, Text, ForeignKey, Enum
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.database import Base
+from app.database import Base, UUIDType
 from app.utils.constants import ReportReason
 import uuid
 
@@ -12,13 +11,13 @@ class Report(Base):
     # ============================================================
     # PRIMARY KEY
     # ============================================================
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUIDType, primary_key=True, default=lambda: str(uuid.uuid4()))
     
     # ============================================================
     # FOREIGN KEYS
     # ============================================================
-    reporter_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    reported_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    reporter_id = Column(UUIDType, ForeignKey("users.id"), nullable=False)
+    reported_id = Column(UUIDType, ForeignKey("users.id"), nullable=False)
     
     # ============================================================
     # REPORT DATA

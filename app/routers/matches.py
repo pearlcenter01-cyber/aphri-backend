@@ -18,6 +18,7 @@ from app.models.user import User
 from app.dependencies import get_current_user
 from datetime import datetime
 from app.models.message import Message
+from app.services.credit_service import CreditService
 router = APIRouter()
 
 # ============================================================
@@ -588,6 +589,21 @@ async def rate_single_answer(
         if not question:
             raise HTTPException(status_code=404, detail="Question not found")
         
+        # ✅ DEDUCT 1 CREDIT on first rating of this question set
+        already_rated = db.query(ChatQuestion).filter(
+            ChatQuestion.user_id == question.user_id,
+            ChatQuestion.candidate_id == question.candidate_id,
+            ChatQuestion.rating.isnot(None)
+        ).count()
+        
+        if already_rated == 0:
+            CreditService.spend_credits(
+                db,
+                user_id=current_user.id,
+                amount=1,
+                action="rate_answers",
+            )
+        
         question.rating = rating
         question.rated_at = datetime.utcnow()
         db.commit()
@@ -918,6 +934,15 @@ async def potential_match_answer(
         ChatQuestion.candidate_id == current_user.id,
         ChatQuestion.question_index == question_index
     ).first()
+    
+    # ✅ DEDUCT 1 CREDIT on first answer to this user
+    if not existing:
+        CreditService.spend_credits(
+            db,
+            user_id=current_user.id,
+            amount=1,
+            action="answer_questions",
+        )
     
     if existing:
         existing.answer_text = answer

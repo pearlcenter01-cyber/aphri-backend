@@ -1,5 +1,4 @@
 from sqlalchemy import Column, String, DateTime, Float, ForeignKey, Enum, Text
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -28,9 +27,9 @@ class Payment(Base):
     # ============================================================
     # PRIMARY KEY
     # ============================================================
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    subscription_id = Column(UUID(as_uuid=True), ForeignKey("subscriptions.id"), nullable=True)
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    subscription_id = Column(String(36), ForeignKey("subscriptions.id"), nullable=True)
     
     # ============================================================
     # CHAPA DATA

@@ -10,11 +10,32 @@ from app.middleware.logging import LoggingMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.middleware.auth import AuthMiddleware
 from app.api import compatibility
+from app.routers import credits
+
+# ============================================================
+# IMPORT ALL MODELS (required before create_all)
+# ============================================================
+from app.models.user import User
+from app.models.profile import Profile
+from app.models.photo import Photo
+from app.models.swipe import Swipe
+from app.models.match import Match
+from app.models.message import Message
+from app.models.subscription import Subscription
+from app.models.payment import Payment
+from app.models.notification import Notification
+from app.models.report import Report
+from app.models.block import Block
+from app.models.answer import Answer
+from app.models.chat_question import ChatQuestion
+from app.models.match_question_game import MatchQuestionGame
+from app.models.compatibility import CompatibilitySession
+from app.models.real_match import RealMatch
+from app.models.casual import CasualQuestion, CasualResponse
 
 # ============================================================
 # CREATE DATABASE TABLES (First run only)
 # ============================================================
-# Uncomment for first run to create tables
 Base.metadata.create_all(bind=engine)
 
 # ============================================================
@@ -27,6 +48,7 @@ app = FastAPI(
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
 )
+
 
 # ============================================================
 # MIDDLEWARE
@@ -81,6 +103,7 @@ app.include_router(payments.router, prefix="/api/payments", tags=["Payments"])
 app.include_router(subscriptions.router, prefix="/api/subscriptions", tags=["Subscriptions"])
 app.include_router(push.router, prefix="/api/push", tags=["Push Notifications"])
 app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
+app.include_router(credits.router, prefix="/api/credits", tags=["credits"])
 # ❌ DELETE THIS: app.include_router(matches.router, prefix="/api", tags=["matches"])
 # ============================================================
 # WEBSOCKET ROUTES
