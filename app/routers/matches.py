@@ -21,6 +21,63 @@ from app.models.message import Message
 from app.services.credit_service import CreditService
 router = APIRouter()
 
+
+
+CHAT_START_COST = 10
+
+
+def _require_chat_access(user: User):
+    from app.utils.constants import UserStatus
+    has_credits = (user.credits_remaining or 0) > 0
+    has_premium = user.subscription_status == UserStatus.PREMIUM
+    if not has_credits and not has_premium:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Subscription required. Please upgrade to view custom questions.",
+        )
+
+
+def _charge_chat_start(db: Session, match: Match, user: User):
+    """Charge 10 credits to open a chat with this match. Only charged once per user per match."""
+    from app.utils.constants import UserStatus
+
+    if match.user_1_id == user.id:
+        already_paid = match.chat_charge_paid_by_user_1
+    elif match.user_2_id == user.id:
+        already_paid = match.chat_charge_paid_by_user_2
+    else:
+        raise HTTPException(status_code=403, detail="Not part of this match")
+
+    if already_paid:
+        return
+
+    if user.subscription_status == UserStatus.PREMIUM:
+        if match.user_1_id == user.id:
+            match.chat_charge_paid_by_user_1 = True
+        else:
+            match.chat_charge_paid_by_user_2 = True
+        db.commit()
+        return
+
+    CreditService.spend_credits(
+        db,
+        user_id=user.id,
+        amount=CHAT_START_COST,
+        action="start_chat",
+    )
+
+    if match.user_1_id == user.id:
+        match.chat_charge_paid_by_user_1 = True
+    else:
+        match.chat_charge_paid_by_user_2 = True
+    db.commit()
+
+
+
+
+
+
+
 # ============================================================
 # MATCH ENDPOINTS
 # ============================================================
@@ -781,6 +838,8 @@ async def get_all_game_questions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> List[Dict[str, Any]]:
+    _require_chat_access(current_user)
+
     """Get all questions and answers for the current user (both asked and received)"""
     from app.models.chat_question import ChatQuestion
     

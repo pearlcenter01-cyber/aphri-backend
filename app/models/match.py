@@ -35,6 +35,12 @@ class Match(Base):
     chat_unlocked_at = Column(DateTime, nullable=True)
     
     # ============================================================
+    # CHAT CREDIT TRACKING
+    # ============================================================
+    chat_charge_paid_by_user_1 = Column(Boolean, default=False, nullable=False)
+    chat_charge_paid_by_user_2 = Column(Boolean, default=False, nullable=False)
+    
+    # ============================================================
     # MESSAGE STATS
     # ============================================================
     last_message_at = Column(DateTime, nullable=True)
