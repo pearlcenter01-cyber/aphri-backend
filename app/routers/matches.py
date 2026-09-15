@@ -788,25 +788,38 @@ async def get_game_questions(
 ) -> Dict[str, Any]:
     """Get all questions and answers for a game between two users"""
     from app.models.chat_question import ChatQuestion
-    
+
+    _require_chat_access(current_user)
+
     try:
         user_uuid = UUID(current_user.id)
         candidate_uuid = UUID(candidate_id)
-        
+
         user_uuid_str = str(user_uuid)
         candidate_uuid_str = str(candidate_uuid)
-        
+
         print(f"Getting questions between {user_uuid_str} and {candidate_uuid_str}")
-        
+
+        # ✅ Charge 10 credits to open this chat (once per user per match)
+        match = db.query(Match).filter(
+            or_(
+                and_(Match.user_1_id == user_uuid_str, Match.user_2_id == candidate_uuid_str),
+                and_(Match.user_1_id == candidate_uuid_str, Match.user_2_id == user_uuid_str),
+            )
+        ).first()
+
+        if match:
+            _charge_chat_start(db, match, current_user)
+
         questions = db.query(ChatQuestion).filter(
             or_(
                 and_(ChatQuestion.user_id == user_uuid_str, ChatQuestion.candidate_id == candidate_uuid_str),
                 and_(ChatQuestion.user_id == candidate_uuid_str, ChatQuestion.candidate_id == user_uuid_str)
             )
         ).order_by(ChatQuestion.question_index).all()
-        
+
         print(f"Found {len(questions)} questions")
-        
+
         return {
             "questions": [
                 {
@@ -831,7 +844,6 @@ async def get_game_questions(
         import traceback
         traceback.print_exc()
         return {"questions": []}
-
 
 @router.get("/game/all-questions")
 async def get_all_game_questions(
@@ -887,6 +899,52 @@ async def get_all_game_questions(
         import traceback
         traceback.print_exc()
         return []
+
+
+
+@router.post("/start-chat")
+async def start_chat(
+    request: Dict[str, Any],
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """Find or create a Match between current_user and another user. Returns match_id."""
+    other_user_id = request.get("other_user_id")
+    if not other_user_id:
+        raise HTTPException(status_code=400, detail="other_user_id is required")
+    if other_user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot chat with yourself")
+
+    other_user = db.query(User).filter(User.id == other_user_id).first()
+    if not other_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    existing = db.query(Match).filter(
+        or_(
+            and_(Match.user_1_id == current_user.id, Match.user_2_id == other_user_id),
+            and_(Match.user_1_id == other_user_id, Match.user_2_id == current_user.id),
+        )
+    ).first()
+
+    if existing:
+        return {"match_id": str(existing.id), "created": False}
+
+    now = datetime.utcnow()
+    new_match = Match(
+        user_1_id=current_user.id,
+        user_2_id=other_user_id,
+        user_1_swiped_at=now,
+        user_2_swiped_at=now,
+        matched_at=now,
+        chat_unlocked_at=now,
+        is_active=True,
+    )
+    db.add(new_match)
+    db.commit()
+    db.refresh(new_match)
+
+    return {"match_id": str(new_match.id), "created": True}
+
 
 @router.get("/game/matches")
 async def get_game_matches(
