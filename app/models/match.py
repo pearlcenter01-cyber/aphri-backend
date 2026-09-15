@@ -39,6 +39,7 @@ class Match(Base):
     # ============================================================
     chat_charge_paid_by_user_1 = Column(Boolean, default=False, nullable=False)
     chat_charge_paid_by_user_2 = Column(Boolean, default=False, nullable=False)
+    initiator_id = Column(String(36), nullable=True)
     
     # ============================================================
     # MESSAGE STATS

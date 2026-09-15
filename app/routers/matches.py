@@ -38,15 +38,20 @@ def _require_chat_access(user: User):
 
 
 def _charge_chat_start(db: Session, match: Match, user: User):
-    """Charge 10 credits to open a chat with this match. Only charged once per user per match."""
+    """Charge 10 credits to the initiator of the chat. Recipients read and reply free."""
     from app.utils.constants import UserStatus
+
+    if match.user_1_id != user.id and match.user_2_id != user.id:
+        raise HTTPException(status_code=403, detail="Not part of this match")
+
+    # If there is an initiator and the current user is not them, no charge.
+    if match.initiator_id and match.initiator_id != user.id:
+        return
 
     if match.user_1_id == user.id:
         already_paid = match.chat_charge_paid_by_user_1
-    elif match.user_2_id == user.id:
-        already_paid = match.chat_charge_paid_by_user_2
     else:
-        raise HTTPException(status_code=403, detail="Not part of this match")
+        already_paid = match.chat_charge_paid_by_user_2
 
     if already_paid:
         return
@@ -173,6 +178,19 @@ async def get_match_messages(
     """
     Get messages for a match
     """
+    match = db.query(Match).filter(Match.id == match_id).first()
+    if not match:
+        raise HTTPException(status_code=404, detail="Match not found")
+
+    if match.user_1_id != current_user.id and match.user_2_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not part of this match")
+
+    # Only gate the initiator. Recipients read/reply free.
+    if not match.initiator_id or match.initiator_id == current_user.id:
+        _require_chat_access(current_user)
+
+    _charge_chat_start(db, match, current_user)
+
     return MatchService.get_match_messages(db, match_id, current_user.id, limit, offset)
 
 
@@ -789,8 +807,6 @@ async def get_game_questions(
     """Get all questions and answers for a game between two users"""
     from app.models.chat_question import ChatQuestion
 
-    _require_chat_access(current_user)
-
     try:
         user_uuid = UUID(current_user.id)
         candidate_uuid = UUID(candidate_id)
@@ -800,7 +816,6 @@ async def get_game_questions(
 
         print(f"Getting questions between {user_uuid_str} and {candidate_uuid_str}")
 
-        # ✅ Charge 10 credits to open this chat (once per user per match)
         match = db.query(Match).filter(
             or_(
                 and_(Match.user_1_id == user_uuid_str, Match.user_2_id == candidate_uuid_str),
@@ -809,6 +824,9 @@ async def get_game_questions(
         ).first()
 
         if match:
+            # Only gate the initiator. Recipients read/reply free.
+            if not match.initiator_id or match.initiator_id == current_user.id:
+                _require_chat_access(current_user)
             _charge_chat_start(db, match, current_user)
 
         questions = db.query(ChatQuestion).filter(
@@ -844,7 +862,7 @@ async def get_game_questions(
         import traceback
         traceback.print_exc()
         return {"questions": []}
-
+        
 @router.get("/game/all-questions")
 async def get_all_game_questions(
     current_user: User = Depends(get_current_user),
@@ -938,6 +956,7 @@ async def start_chat(
         matched_at=now,
         chat_unlocked_at=now,
         is_active=True,
+        initiator_id=current_user.id,
     )
     db.add(new_match)
     db.commit()
