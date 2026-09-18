@@ -725,8 +725,8 @@ async def get_pending_questions(
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
-    Get pending custom questions from potential matches.
-    Only returns the NEXT deliverable question per user.
+    Get questions actually delivered to the current user that they haven't answered yet.
+    Includes the first question of a fresh potential match even if no ChatQuestion row exists yet.
     """
     try:
         from app.models.chat_question import ChatQuestion
@@ -738,30 +738,48 @@ async def get_pending_questions(
         print(f"User UUID: {user_uuid}")
 
         potential_matches = SwipeService.get_matches(db, current_user.id, 50)
-        print(f"Potential matches found: {len(potential_matches)}")
+        potential_ids = {m.get('id') for m in potential_matches if m.get('id')}
+        print(f"Potential matches found: {len(potential_ids)}")
 
-        # All rows where current user is the answerer (someone asked them)
-        answer_rows = db.query(ChatQuestion).filter(
-            ChatQuestion.candidate_id == user_uuid_str
+        # Questions actually delivered to me (I'm the candidate) and not yet answered
+        unanswered = db.query(ChatQuestion).filter(
+            ChatQuestion.candidate_id == user_uuid_str,
+            ChatQuestion.is_answered == False,
         ).all()
 
-        # Map: asker_id -> {index: ChatQuestion}
-        by_asker: Dict[str, Dict[int, Any]] = {}
-        for q in answer_rows:
-            by_asker.setdefault(q.user_id, {})[q.question_index] = q
-
         pending_questions = []
+        seen_askers = set()
 
+        for q in unanswered:
+            if q.user_id not in potential_ids:
+                continue
+            seen_askers.add(q.user_id)
+            other_user = db.query(User).filter(User.id == q.user_id).first()
+            if not other_user:
+                continue
+            pending_questions.append({
+                "id": f"{q.user_id}_{q.question_index}",
+                "match_id": q.user_id,
+                "match_name": other_user.full_name,
+                "question": q.question_text,
+                "answered": False,
+            })
+
+        # Fallback: potential matches with no ChatQuestion rows at all.
+        # Count question 0 as pending.
         for match in potential_matches:
-            user_id = match.get('id')
-            if not user_id or user_id in ("{}", "null", "undefined"):
-                continue
-            try:
-                UUID(user_id)
-            except:
+            uid = match.get('id')
+            if not uid or uid in seen_askers:
                 continue
 
-            other_user = db.query(User).filter(User.id == user_id).first()
+            any_row = db.query(ChatQuestion).filter(
+                ChatQuestion.candidate_id == user_uuid_str,
+                ChatQuestion.user_id == uid,
+            ).first()
+            if any_row:
+                continue
+
+            other_user = db.query(User).filter(User.id == uid).first()
             if not other_user or not other_user.custom_questions:
                 continue
 
@@ -770,40 +788,16 @@ async def get_pending_questions(
             except:
                 continue
 
-            # Walk the sequence one step at a time
-            rows = by_asker.get(user_id, {})
-            next_index = None
-            for idx in range(len(questions)):
-                row = rows.get(idx)
-                if row is None:
-                    # Not answered yet
-                    if idx == 0:
-                        next_index = idx
-                        break
-                    # Check the previous is answered AND rated
-                    prev = rows.get(idx - 1)
-                    if prev and prev.is_answered and prev.rating is not None:
-                        next_index = idx
-                        break
-                    else:
-                        # Sequence is blocked; stop here
-                        break
-                else:
-                    # Already answered
-                    if row.rating is None:
-                        # Waiting for the asker to rate; nothing more deliverable
-                        break
-                    # Rated, continue to next
-                    continue
+            if not questions:
+                continue
 
-            if next_index is not None:
-                pending_questions.append({
-                    "id": f"{user_id}_{next_index}",
-                    "match_id": user_id,
-                    "match_name": other_user.full_name,
-                    "question": questions[next_index],
-                    "answered": False,
-                })
+            pending_questions.append({
+                "id": f"{uid}_0",
+                "match_id": uid,
+                "match_name": other_user.full_name,
+                "question": questions[0],
+                "answered": False,
+            })
 
         print(f"Total pending questions: {len(pending_questions)}")
         return {
