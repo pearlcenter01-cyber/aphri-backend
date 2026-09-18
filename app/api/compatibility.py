@@ -142,7 +142,7 @@ async def respond_compatibility(
     print("🔴🔴🔴 ABOUT TO CALL AIService.generate_compatibility_questions")
     
     try:
-        questions = AIService.generate_compatibility_questions(user_profile, partner_profile, language=language))
+        questions = AIService.generate_compatibility_questions(user_profile, partner_profile, language=language)
         print(f"🔴🔴🔴 QUESTIONS GENERATED SUCCESSFULLY: {len(questions)} questions")
         if questions:
             print(f"🔴 First question: {questions[0].get('question', 'None')[:50]}...")
