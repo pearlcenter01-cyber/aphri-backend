@@ -294,88 +294,6 @@ async def get_match_count(
 # PENDING QUESTIONS
 # ============================================================
 
-@router.get("/questions/pending")
-async def get_pending_questions(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-) -> Dict[str, Any]:
-    """
-    Get pending custom questions from potential matches (50%+ compatibility)
-    """
-    try:
-        from app.models.chat_question import ChatQuestion
-
-        user_uuid = current_user.id
-        if isinstance(user_uuid, str):
-            user_uuid = UUID(user_uuid)
-        print(f"User UUID: {user_uuid}")
-
-        potential_matches = SwipeService.get_matches(db, current_user.id, 50)
-        print(f"Potential matches found: {len(potential_matches)}")
-
-        answered_rows = db.query(ChatQuestion).filter(
-            ChatQuestion.candidate_id == str(user_uuid),
-            ChatQuestion.is_answered == True,
-        ).all()
-        answered_ids = {f"{q.user_id}_{q.question_index}" for q in answered_rows}
-        print(f"User has answered {len(answered_ids)} questions: {answered_ids}")
-
-        pending_questions = []
-
-        for match in potential_matches:
-            user_id = match.get('id')
-
-            if not user_id or user_id == "{}" or user_id == "null" or user_id == "undefined":
-                continue
-
-            try:
-                UUID(user_id)
-            except:
-                continue
-
-            other_user = db.query(User).filter(User.id == user_id).first()
-            if not other_user:
-                continue
-
-            print(f"User: {other_user.email}")
-
-            if other_user.custom_questions:
-                try:
-                    questions = json.loads(other_user.custom_questions)
-                    print(f"Custom questions: {questions}")
-
-                    for idx, q in enumerate(questions):
-                        question_id = f"{user_id}_{idx}"
-                        print(f"Question ID: {question_id}")
-                        print(f"Is answered? {question_id in answered_ids}")
-
-                        if question_id in answered_ids:
-                            print(f"Skipping already answered: {question_id}")
-                            continue
-
-                        pending_questions.append({
-                            "id": question_id,
-                            "match_id": user_id,
-                            "match_name": other_user.full_name,
-                            "question": q,
-                            "answered": False
-                        })
-                except Exception as e:
-                    print(f"Error parsing questions: {e}")
-                    continue
-
-        print(f"Total pending questions: {len(pending_questions)}")
-
-        return {
-            "has_pending": len(pending_questions) > 0,
-            "questions": pending_questions
-        }
-    except Exception as e:
-        print(f"Error: {e}")
-        import traceback
-        traceback.print_exc()
-        return {"has_pending": False, "questions": []}
-
 
 @router.post("/questions/answer")
 async def answer_question(
@@ -801,6 +719,104 @@ async def rate_single_answer(
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/questions/pending")
+async def get_pending_questions(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Get pending custom questions from potential matches.
+    Only returns the NEXT deliverable question per user.
+    """
+    try:
+        from app.models.chat_question import ChatQuestion
+
+        user_uuid = current_user.id
+        if isinstance(user_uuid, str):
+            user_uuid = UUID(user_uuid)
+        user_uuid_str = str(user_uuid)
+        print(f"User UUID: {user_uuid}")
+
+        potential_matches = SwipeService.get_matches(db, current_user.id, 50)
+        print(f"Potential matches found: {len(potential_matches)}")
+
+        # All rows where current user is the answerer (someone asked them)
+        answer_rows = db.query(ChatQuestion).filter(
+            ChatQuestion.candidate_id == user_uuid_str
+        ).all()
+
+        # Map: asker_id -> {index: ChatQuestion}
+        by_asker: Dict[str, Dict[int, Any]] = {}
+        for q in answer_rows:
+            by_asker.setdefault(q.user_id, {})[q.question_index] = q
+
+        pending_questions = []
+
+        for match in potential_matches:
+            user_id = match.get('id')
+            if not user_id or user_id in ("{}", "null", "undefined"):
+                continue
+            try:
+                UUID(user_id)
+            except:
+                continue
+
+            other_user = db.query(User).filter(User.id == user_id).first()
+            if not other_user or not other_user.custom_questions:
+                continue
+
+            try:
+                questions = json.loads(other_user.custom_questions)
+            except:
+                continue
+
+            # Walk the sequence one step at a time
+            rows = by_asker.get(user_id, {})
+            next_index = None
+            for idx in range(len(questions)):
+                row = rows.get(idx)
+                if row is None:
+                    # Not answered yet
+                    if idx == 0:
+                        next_index = idx
+                        break
+                    # Check the previous is answered AND rated
+                    prev = rows.get(idx - 1)
+                    if prev and prev.is_answered and prev.rating is not None:
+                        next_index = idx
+                        break
+                    else:
+                        # Sequence is blocked; stop here
+                        break
+                else:
+                    # Already answered
+                    if row.rating is None:
+                        # Waiting for the asker to rate; nothing more deliverable
+                        break
+                    # Rated, continue to next
+                    continue
+
+            if next_index is not None:
+                pending_questions.append({
+                    "id": f"{user_id}_{next_index}",
+                    "match_id": user_id,
+                    "match_name": other_user.full_name,
+                    "question": questions[next_index],
+                    "answered": False,
+                })
+
+        print(f"Total pending questions: {len(pending_questions)}")
+        return {
+            "has_pending": len(pending_questions) > 0,
+            "questions": pending_questions,
+        }
+    except Exception as e:
+        print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"has_pending": False, "questions": []}
+
+
 @router.get("/game/questions/{candidate_id}")
 async def get_game_questions(
     candidate_id: str,
@@ -865,6 +881,8 @@ async def get_game_questions(
         import traceback
         traceback.print_exc()
         return {"questions": []}
+
+
         
 @router.get("/game/all-questions")
 async def get_all_game_questions(
