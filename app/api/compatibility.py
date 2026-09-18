@@ -115,6 +115,39 @@ async def respond_compatibility(
     db.commit()
     
     print("🔴 Session status updated to both_agreed")
+
+
+    # If questions already exist for this session, don't generate again
+    existing_questions = db.query(CompatibilityQuestion).filter(
+        CompatibilityQuestion.session_id == session.id
+    ).order_by(CompatibilityQuestion.question_index).all()
+
+    if existing_questions:
+        print(f"🔴 Session already has {len(existing_questions)} questions, returning them")
+        result = []
+        for q in existing_questions:
+            options = []
+            if q.options:
+                try:
+                    options = json.loads(q.options)
+                except:
+                    options = []
+            result.append({
+                "id": q.id,
+                "text": q.question_text,
+                "options": options,
+                "method": q.category or "General"
+            })
+        return {
+            "message": "Request accepted",
+            "session_id": session.id,
+            "questions": result
+        }
+
+
+
+
+
     
     # Get user profiles directly from database
     print("🔴 Fetching user profiles...")
