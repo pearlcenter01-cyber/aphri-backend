@@ -303,53 +303,56 @@ async def get_pending_questions(
     Get pending custom questions from potential matches (50%+ compatibility)
     """
     try:
+        from app.models.chat_question import ChatQuestion
+
         user_uuid = current_user.id
         if isinstance(user_uuid, str):
             user_uuid = UUID(user_uuid)
         print(f"User UUID: {user_uuid}")
-        
+
         potential_matches = SwipeService.get_matches(db, current_user.id, 50)
         print(f"Potential matches found: {len(potential_matches)}")
-        
-        answered_question_ids = db.query(Answer.question_id).filter(
-            Answer.user_id == user_uuid
+
+        answered_rows = db.query(ChatQuestion).filter(
+            ChatQuestion.candidate_id == str(user_uuid),
+            ChatQuestion.is_answered == True,
         ).all()
-        answered_ids = {str(q[0]) for q in answered_question_ids}
+        answered_ids = {f"{q.user_id}_{q.question_index}" for q in answered_rows}
         print(f"User has answered {len(answered_ids)} questions: {answered_ids}")
-        
+
         pending_questions = []
-        
+
         for match in potential_matches:
             user_id = match.get('id')
-            
+
             if not user_id or user_id == "{}" or user_id == "null" or user_id == "undefined":
                 continue
-            
+
             try:
                 UUID(user_id)
             except:
                 continue
-                
+
             other_user = db.query(User).filter(User.id == user_id).first()
             if not other_user:
                 continue
-            
+
             print(f"User: {other_user.email}")
-            
+
             if other_user.custom_questions:
                 try:
                     questions = json.loads(other_user.custom_questions)
                     print(f"Custom questions: {questions}")
-                    
+
                     for idx, q in enumerate(questions):
                         question_id = f"{user_id}_{idx}"
                         print(f"Question ID: {question_id}")
                         print(f"Is answered? {question_id in answered_ids}")
-                        
+
                         if question_id in answered_ids:
                             print(f"Skipping already answered: {question_id}")
                             continue
-                            
+
                         pending_questions.append({
                             "id": question_id,
                             "match_id": user_id,
@@ -360,9 +363,9 @@ async def get_pending_questions(
                 except Exception as e:
                     print(f"Error parsing questions: {e}")
                     continue
-        
+
         print(f"Total pending questions: {len(pending_questions)}")
-        
+
         return {
             "has_pending": len(pending_questions) > 0,
             "questions": pending_questions
