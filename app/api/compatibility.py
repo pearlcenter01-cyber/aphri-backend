@@ -85,6 +85,7 @@ async def respond_compatibility(
     
     session_id = request.get("session_id")
     agree = request.get("agree", False)
+    language = request.get("language", "en")
     
     print(f"🔴 session_id: {session_id}")
     print(f"🔴 agree: {agree}")
@@ -141,7 +142,7 @@ async def respond_compatibility(
     print("🔴🔴🔴 ABOUT TO CALL AIService.generate_compatibility_questions")
     
     try:
-        questions = AIService.generate_compatibility_questions(user_profile, partner_profile)
+        questions = AIService.generate_compatibility_questions(user_profile, partner_profile, language=language))
         print(f"🔴🔴🔴 QUESTIONS GENERATED SUCCESSFULLY: {len(questions)} questions")
         if questions:
             print(f"🔴 First question: {questions[0].get('question', 'None')[:50]}...")
@@ -352,6 +353,7 @@ async def submit_compatibility_answers(
     
     session_id = request.get("session_id")
     answers = request.get("answers", [])
+    language = request.get("language", "en")
     
     print(f"🔴 session_id: {session_id}")
     print(f"🔴 answers count: {len(answers)}")
@@ -439,7 +441,7 @@ async def submit_compatibility_answers(
         
         # Analyze with AI
         print("🔴 Calling AI for analysis...")
-        report = AIService.analyze_compatibility(user_answers, partner_answers)
+        report = AIService.analyze_compatibility(user_answers, partner_answers, language=language)
         print(f"🔴 Analysis complete! Score: {report.get('score', 'N/A')}")
         
         session.status = "complete"

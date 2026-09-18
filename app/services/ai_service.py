@@ -16,10 +16,11 @@ print(f"🔴 OpenAI Model: {settings.OPENAI_MODEL}")
 class AIService:
     
     @staticmethod
-    def generate_compatibility_questions(user_profile: Dict, partner_profile: Dict) -> List[Dict]:
+    def generate_compatibility_questions(user_profile: Dict, partner_profile: Dict, language: str = "en") -> List[Dict]:
         """
-        Generate 10 deep psychological questions with 4 challenging multiple choice options
+        Generate 5 deep psychological questions with 4 challenging multiple choice options
         """
+        lang_name = "Amharic" if language == "am" else "English"
         print("🔴🔴🔴 generate_compatibility_questions CALLED!")
         
         prompt = f"""
@@ -34,12 +35,13 @@ class AIService:
         - Looking for: {partner_profile.get('looking_for', 'Serious Relationship')}
         - Age: {partner_profile.get('age', 'Unknown')}
         
-        Generate 10 deep, psychological questions to assess their compatibility.
+        Generate 5 deep, psychological questions to assess their compatibility.
+        Write ALL question text and ALL multiple-choice options in {lang_name}.
         Include questions from all 3 frameworks:
         
-        1. GOTTMAN METHOD (3 questions): Conflict resolution, communication, trust
-        2. ATTACHMENT THEORY (3 questions): Emotional needs, security, intimacy
-        3. BIG FIVE (4 questions): Personality alignment, values, lifestyle
+        1. GOTTMAN METHOD (2 questions): Conflict resolution, communication, trust
+        2. ATTACHMENT THEORY (2 questions): Emotional needs, security, intimacy
+        3. BIG FIVE (1 questions): Personality alignment, values, lifestyle
         
         For EACH question:
         1. Make the question deep and thought-provoking
@@ -154,88 +156,42 @@ class AIService:
                     ],
                     "method": "Attachment Theory"
                 },
-                {
-                    "question": "How do you express love most naturally?",
-                    "options": [
-                        "Through words of affirmation and encouragement",
-                        "Through acts of service and practical help",
-                        "Through quality time and undivided attention",
-                        "Through physical touch and intimacy"
-                    ],
-                    "method": "Attachment Theory"
-                },
-                {
-                    "question": "When you face a major life decision, how do you approach it?",
-                    "options": [
-                        "I analyze all options carefully before deciding",
-                        "I trust my intuition and go with my gut feeling",
-                        "I seek input from trusted people before deciding",
-                        "I take time to reflect and decide when I feel ready"
-                    ],
-                    "method": "Big Five"
-                },
-                {
-                    "question": "How important is personal growth to you in a relationship?",
-                    "options": [
-                        "Essential - we should grow together and support each other",
-                        "Important, but not at the expense of the relationship",
-                        "Secondary - stability and comfort matter more",
-                        "I believe growth is an individual journey, not a shared one"
-                    ],
-                    "method": "Big Five"
-                },
-                {
-                    "question": "How do you typically handle disagreements about finances or lifestyle?",
-                    "options": [
-                        "I advocate for my perspective and seek compromise",
-                        "I defer to my partner's judgment to avoid conflict",
-                        "I suggest we seek professional advice or external input",
-                        "I maintain my position and hope we can agree over time"
-                    ],
-                    "method": "Big Five"
-                },
-                {
-                    "question": "What role does physical intimacy play in your ideal relationship?",
-                    "options": [
-                        "A central pillar - essential for emotional connection",
-                        "Important, but emotional intimacy matters more",
-                        "Secondary - it comes and goes with life circumstances",
-                        "Desirable, but not necessary for a deep connection"
-                    ],
-                    "method": "Big Five"
-                }
+                                    
             ]
     
     @staticmethod
-    def analyze_compatibility(user_responses: List[str], partner_responses: List[str]) -> Dict[str, Any]:
+    def analyze_compatibility(user_responses: List[str], partner_responses: List[str], language: str = "en") -> Dict[str, Any]:
         """
         Analyze both partners' responses and generate a compatibility report
         """
         print("🔴🔴🔴 analyze_compatibility CALLED!")
-        
+
+        lang_name = "Amharic" if language == "am" else "English"
+
         prompt = f"""
         You are a relationship compatibility expert using the combined Gottman Method,
         Attachment Theory, and Big Five personality framework.
-        
-        Partner 1's answers to 10 compatibility questions:
+
+        Partner 1's answers to 5 compatibility questions:
         {json.dumps(user_responses, indent=2)}
-        
-        Partner 2's answers to the same 10 compatibility questions:
+
+        Partner 2's answers to the same 5 compatibility questions:
         {json.dumps(partner_responses, indent=2)}
-        
+
         Analyze the compatibility between these two people.
+        Write the entire report in {lang_name}.
         Provide a comprehensive analysis with the following:
-        
+
         1. OVERALL COMPATIBILITY SCORE (0-100%): Calculate based on alignment of values, communication style, emotional needs, and goals.
-        
+
         2. STRENGTHS (3-4 key areas where they are highly compatible): Highlight specific areas of alignment with examples from their answers.
-        
+
         3. CHALLENGES (3-4 key areas where they differ): Identify potential conflict areas with specific examples from their answers.
-        
+
         4. KEY INSIGHTS: Personality insights about each person based on their answers.
-        
+
         5. RECOMMENDATIONS: Practical advice for building a strong relationship based on their compatibility profile.
-        
+
         Return ONLY a JSON object with the following structure:
         {{
             "score": 75,
@@ -248,25 +204,24 @@ class AIService:
             "recommendations": "text"
         }}
         """
-        
+
         try:
             print("🔴 About to call OpenAI for analysis...")
-            
+
             response = openai.ChatCompletion.create(
                 model=settings.OPENAI_MODEL,
                 messages=[
-                    {"role": "system", "content": "You are a relationship compatibility expert. Analyze answers and provide a detailed compatibility report."},
+                    {"role": "system", "content": f"You are a relationship compatibility expert. Analyze answers and provide a detailed compatibility report in {lang_name}."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.7,
                 max_tokens=1500
             )
-            
+
             print("🔴 OpenAI analysis response received!")
-            
+
             report_text = response['choices'][0]['message']['content'].strip()
-            
-            # Extract JSON
+
             json_match = re.search(r'\{.*\}', report_text, re.DOTALL)
             if json_match:
                 report = json.loads(json_match.group())
@@ -276,7 +231,7 @@ class AIService:
                 report = json.loads(report_text)
                 print(f"🔴 Report extracted successfully: score={report.get('score', 'N/A')}")
                 return report
-            
+
         except Exception as e:
             print(f"❌ Error analyzing compatibility: {e}")
             import traceback
