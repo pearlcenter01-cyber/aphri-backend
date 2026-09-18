@@ -254,10 +254,16 @@ async def respond_compatibility(
             }
         ]
         print(f"🔴 Using fallback questions: {len(questions)} questions")
-    
+
+    # Hard cap: never store more than 5 questions
+    questions = questions[:5]
+    print(f"🔴 Final question count after cap: {len(questions)}")
+
     # Save questions to database
     print("🔴 Saving questions to database...")
     for idx, q in enumerate(questions):
+
+
         # Extract question text and options
         question_text = q.get('question', '') if isinstance(q, dict) else q
         options = q.get('options', []) if isinstance(q, dict) else []
