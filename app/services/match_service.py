@@ -14,7 +14,7 @@ class MatchService:
     """Service for match management"""
     
     @staticmethod
-        def get_user_matches(db: Session, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_user_matches(db: Session, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
         """Get all matches for a user"""
         current_user = db.query(User).filter(User.id == user_id).first()
         matches = db.query(Match).filter(
