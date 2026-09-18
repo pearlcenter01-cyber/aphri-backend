@@ -726,7 +726,6 @@ async def get_pending_questions(
 ) -> Dict[str, Any]:
     """
     Get questions actually delivered to the current user that they haven't answered yet.
-    Includes the first question of a fresh potential match even if no ChatQuestion row exists yet.
     """
     try:
         from app.models.chat_question import ChatQuestion
@@ -748,12 +747,10 @@ async def get_pending_questions(
         ).all()
 
         pending_questions = []
-        seen_askers = set()
 
         for q in unanswered:
             if q.user_id not in potential_ids:
                 continue
-            seen_askers.add(q.user_id)
             other_user = db.query(User).filter(User.id == q.user_id).first()
             if not other_user:
                 continue
@@ -762,40 +759,6 @@ async def get_pending_questions(
                 "match_id": q.user_id,
                 "match_name": other_user.full_name,
                 "question": q.question_text,
-                "answered": False,
-            })
-
-        # Fallback: potential matches with no ChatQuestion rows at all.
-        # Count question 0 as pending.
-        for match in potential_matches:
-            uid = match.get('id')
-            if not uid or uid in seen_askers:
-                continue
-
-            any_row = db.query(ChatQuestion).filter(
-                ChatQuestion.candidate_id == user_uuid_str,
-                ChatQuestion.user_id == uid,
-            ).first()
-            if any_row:
-                continue
-
-            other_user = db.query(User).filter(User.id == uid).first()
-            if not other_user or not other_user.custom_questions:
-                continue
-
-            try:
-                questions = json.loads(other_user.custom_questions)
-            except:
-                continue
-
-            if not questions:
-                continue
-
-            pending_questions.append({
-                "id": f"{uid}_0",
-                "match_id": uid,
-                "match_name": other_user.full_name,
-                "question": questions[0],
                 "answered": False,
             })
 
