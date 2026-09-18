@@ -320,6 +320,16 @@ class SwipeService:
         print(f"🔍 Total matches found: {len(scored_candidates)}")
         print(f"🔍 ========== GET_MATCHES END ==========")
         
+        
+        # ✅ Keep only mutual matches: candidate must also see the current user
+        mutual_candidates = []
+        for item in scored_candidates:
+            candidate = item['user']
+            reverse_query = db.query(User).filter(User.id == user.id)
+            reverse_query = SwipeService.apply_filters(db, candidate, reverse_query)
+            if reverse_query.first():
+                mutual_candidates.append(item)
+        scored_candidates = mutual_candidates
         # Sort by score (highest first)
         scored_candidates.sort(key=lambda x: x['score'], reverse=True)
         
