@@ -867,7 +867,7 @@ async def get_all_game_questions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> List[Dict[str, Any]]:
-    _require_chat_access(current_user)
+    #_require_chat_access(current_user)
 
     """Get all questions and answers for the current user (both asked and received)"""
     from app.models.chat_question import ChatQuestion
