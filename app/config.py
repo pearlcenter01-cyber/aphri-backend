@@ -37,7 +37,7 @@ class Settings:
     # OPENAI - AI COMPATIBILITY FEATURE
     # ============================================================
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4")  # or gpt-3.5-turbo for testing
+    OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")  # or gpt-3.5-turbo for testing
     
     # ============================================================
     # CHAPA PAYMENT
