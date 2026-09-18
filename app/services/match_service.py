@@ -14,9 +14,12 @@ class MatchService:
     """Service for match management"""
     
     @staticmethod
-    def get_user_matches(db: Session, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+        def get_user_matches(db: Session, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
         """Get all matches for a user"""
+        current_user = db.query(User).filter(User.id == user_id).first()
         matches = db.query(Match).filter(
+
+
             or_(
                 Match.user_1_id == user_id,
                 Match.user_2_id == user_id
@@ -34,6 +37,14 @@ class MatchService:
             # Get the other user's info
             other_user_id = match.get_other_user_id(user_id)
             other_user = db.query(User).filter(User.id == other_user_id).first()
+            # ✅ Skip if the other user doesn't match the current user's gender preference
+            if current_user and other_user and current_user.looking_for_gender:
+                pref = (current_user.looking_for_gender or '').lower()
+                other_gender = (other_user.gender or '').lower()
+                if pref == 'men' and other_gender != 'male':
+                    continue
+                if pref == 'women' and other_gender != 'female':
+                    continue
             
             # ✅ Get last message with guard
             last_message = None
