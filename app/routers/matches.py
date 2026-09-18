@@ -725,7 +725,9 @@ async def get_pending_questions(
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
-    Get questions actually delivered to the current user that they haven't answered yet.
+    Get items that need the current user's action:
+    - Questions delivered to them that they haven't answered
+    - Answers delivered to them that they haven't rated
     """
     try:
         from app.models.chat_question import ChatQuestion
@@ -740,14 +742,13 @@ async def get_pending_questions(
         potential_ids = {m.get('id') for m in potential_matches if m.get('id')}
         print(f"Potential matches found: {len(potential_ids)}")
 
-        # Questions actually delivered to me (I'm the candidate) and not yet answered
+        pending_questions = []
+
+        # 1. Questions delivered to me, not yet answered
         unanswered = db.query(ChatQuestion).filter(
             ChatQuestion.candidate_id == user_uuid_str,
             ChatQuestion.is_answered == False,
         ).all()
-
-        pending_questions = []
-
         for q in unanswered:
             if q.user_id not in potential_ids:
                 continue
@@ -760,6 +761,26 @@ async def get_pending_questions(
                 "match_name": other_user.full_name,
                 "question": q.question_text,
                 "answered": False,
+            })
+
+        # 2. Answers delivered to me, not yet rated
+        unrated = db.query(ChatQuestion).filter(
+            ChatQuestion.user_id == user_uuid_str,
+            ChatQuestion.is_answered == True,
+            ChatQuestion.rating.is_(None),
+        ).all()
+        for q in unrated:
+            if q.candidate_id not in potential_ids:
+                continue
+            other_user = db.query(User).filter(User.id == q.candidate_id).first()
+            if not other_user:
+                continue
+            pending_questions.append({
+                "id": f"{q.candidate_id}_{q.question_index}",
+                "match_id": q.candidate_id,
+                "match_name": other_user.full_name,
+                "question": q.question_text,
+                "answered": True,
             })
 
         print(f"Total pending questions: {len(pending_questions)}")
