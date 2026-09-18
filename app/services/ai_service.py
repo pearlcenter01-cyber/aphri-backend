@@ -1,28 +1,28 @@
-import openai
 import json
 import re
 from typing import List, Dict, Any
+
+# ✅ New SDK (openai>=1.0.0)
+from openai import OpenAI
+
 from app.config import settings
 
-# ✅ Force disable proxies - this prevents the Client.__init__() proxy error
-openai.proxies = {}
-openai.api_key = settings.OPENAI_API_KEY
+# ✅ Create a single reusable client
+client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
-# ✅ Debug: Print that the module is loaded
+# ✅ Debug
 print("🔴🔴🔴 AI_SERVICE MODULE LOADED!")
 print(f"🔴 OpenAI API Key: {settings.OPENAI_API_KEY[:10]}...")
 print(f"🔴 OpenAI Model: {settings.OPENAI_MODEL}")
 
+
 class AIService:
-    
+
     @staticmethod
     def generate_compatibility_questions(user_profile: Dict, partner_profile: Dict, language: str = "en") -> List[Dict]:
-        """
-        Generate 5 deep psychological questions with 4 challenging multiple choice options
-        """
         lang_name = "Amharic" if language == "am" else "English"
         print("🔴🔴🔴 generate_compatibility_questions CALLED!")
-        
+
         prompt = f"""
         You are a relationship compatibility expert using the combined Gottman Method, 
         Attachment Theory, and Big Five personality framework.
@@ -67,13 +67,12 @@ class AIService:
             ...
         ]
         """
-        
+
         try:
             print("🔴 About to call OpenAI API...")
             print(f"🔴 Prompt (first 200 chars): {prompt[:200]}...")
-            
-            # ✅ Use the old API format (works with 0.28.0)
-            response = openai.ChatCompletion.create(
+
+            response = client.chat.completions.create(
                 model=settings.OPENAI_MODEL,
                 messages=[
                     {"role": "system", "content": "You are a relationship compatibility expert. Generate questions with 4 challenging, equal-validity multiple choice options. No obvious right answers. Make all options equally valid but different."},
@@ -82,13 +81,12 @@ class AIService:
                 temperature=0.9,
                 max_tokens=1500
             )
-            
+
             print("🔴 OpenAI response received!")
-            
-            questions_text = response['choices'][0]['message']['content'].strip()
+
+            questions_text = response.choices[0].message.content.strip()
             print(f"🔴 Response text (first 200 chars): {questions_text[:200]}...")
-            
-            # Extract JSON from the response
+
             json_match = re.search(r'\[.*\]', questions_text, re.DOTALL)
             if json_match:
                 questions = json.loads(json_match.group())
@@ -98,13 +96,12 @@ class AIService:
                 questions = json.loads(questions_text)
                 print(f"🔴 Extracted {len(questions)} questions from response")
                 return questions
-            
+
         except Exception as e:
             print(f"❌ Error generating questions: {e}")
             import traceback
             traceback.print_exc()
             print("🔴 Using fallback questions...")
-            # Fallback questions with challenging options
             return [
                 {
                     "question": "When your partner expresses a need that conflicts with your own, what do you typically do?",
@@ -156,14 +153,10 @@ class AIService:
                     ],
                     "method": "Attachment Theory"
                 },
-                                    
             ]
-    
+
     @staticmethod
     def analyze_compatibility(user_responses: List[str], partner_responses: List[str], language: str = "en") -> Dict[str, Any]:
-        """
-        Analyze both partners' responses and generate a compatibility report
-        """
         print("🔴🔴🔴 analyze_compatibility CALLED!")
 
         lang_name = "Amharic" if language == "am" else "English"
@@ -208,7 +201,7 @@ class AIService:
         try:
             print("🔴 About to call OpenAI for analysis...")
 
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model=settings.OPENAI_MODEL,
                 messages=[
                     {"role": "system", "content": f"You are a relationship compatibility expert. Analyze answers and provide a detailed compatibility report in {lang_name}."},
@@ -220,7 +213,7 @@ class AIService:
 
             print("🔴 OpenAI analysis response received!")
 
-            report_text = response['choices'][0]['message']['content'].strip()
+            report_text = response.choices[0].message.content.strip()
 
             json_match = re.search(r'\{.*\}', report_text, re.DOTALL)
             if json_match:
@@ -246,12 +239,9 @@ class AIService:
                 },
                 "recommendations": "Communicate openly and honestly with each other. Take time to understand each other's perspectives."
             }
-    
+
     @staticmethod
     def extract_personality_traits(responses: List[str]) -> Dict[str, Any]:
-        """
-        Extract personality traits from user responses
-        """
         prompt = f"""
         Based on these responses, extract the user's personality traits:
         {json.dumps(responses, indent=2)}
@@ -263,9 +253,9 @@ class AIService:
         - emotional_intelligence: "high", "medium", or "low"
         - core_values: array of 3-5 values
         """
-        
+
         try:
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model=settings.OPENAI_MODEL,
                 messages=[
                     {"role": "system", "content": "Analyze the responses and extract personality traits."},
@@ -274,9 +264,9 @@ class AIService:
                 temperature=0.5,
                 max_tokens=300
             )
-            
-            traits_text = response['choices'][0]['message']['content'].strip()
-            
+
+            traits_text = response.choices[0].message.content.strip()
+
             json_match = re.search(r'\{.*\}', traits_text, re.DOTALL)
             if json_match:
                 return json.loads(json_match.group())
