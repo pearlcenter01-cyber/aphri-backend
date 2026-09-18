@@ -86,6 +86,7 @@ async def respond_compatibility(
     session_id = request.get("session_id")
     agree = request.get("agree", False)
     language = request.get("language", "en")
+    print(f"🔴 LANGUAGE FROM REQUEST: {language!r}")
     
     print(f"🔴 session_id: {session_id}")
     print(f"🔴 agree: {agree}")
