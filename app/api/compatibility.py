@@ -85,7 +85,7 @@ async def respond_compatibility(
     
     session_id = request.get("session_id")
     agree = request.get("agree", False)
-    language = request.get("language", "en")
+    language = "en"
     print(f"🔴 LANGUAGE FROM REQUEST: {language!r}")
     
     print(f"🔴 session_id: {session_id}")
@@ -335,29 +335,79 @@ async def get_compatibility_questions(
     db: Session = Depends(get_db)
 ):
     """
-    Get compatibility questions for a session
+    Get compatibility questions for a session.
+    Self-heals: if the session is both_agreed but no questions exist, generates them in English.
     """
     print(f"🔴 get_compatibility_questions CALLED for session: {session_id}")
-    
+
     session = db.query(CompatibilitySession).filter(
         CompatibilitySession.id == session_id,
-        (CompatibilitySession.user_id == current_user.id) | 
+        (CompatibilitySession.user_id == current_user.id) |
         (CompatibilitySession.partner_id == current_user.id)
     ).first()
-    
+
     if not session:
         print(f"❌ Session not found: {session_id}")
         raise HTTPException(status_code=404, detail="Session not found")
-    
+
     print(f"🔴 Session found: {session.id}, status: {session.status}")
-    
+
     questions = db.query(CompatibilityQuestion).filter(
         CompatibilityQuestion.session_id == session_id
     ).order_by(CompatibilityQuestion.question_index).all()
-    
+
+    # ✅ Self-heal: if both agreed but no questions, generate them now
+    if not questions and session.status in ("both_agreed", "answering"):
+        print("🔴 No questions found — generating in English...")
+        user = db.query(User).filter(User.id == session.user_id).first()
+        partner = db.query(User).filter(User.id == session.partner_id).first()
+
+        user_profile = {
+            "looking_for": user.looking_for if user else "Serious Relationship",
+            "age": user.age if user else None,
+        }
+        partner_profile = {
+            "looking_for": partner.looking_for if partner else "Serious Relationship",
+            "age": partner.age if partner else None,
+        }
+
+        try:
+            generated = AIService.generate_compatibility_questions(
+                user_profile, partner_profile, language="en"
+            )[:5]
+            print(f"🔴 Generated {len(generated)} questions")
+        except Exception as e:
+            print(f"❌ Generation failed: {e}")
+            generated = []
+
+        for idx, q in enumerate(generated):
+            if isinstance(q, dict):
+                question_text = q.get("question", "")
+                options = q.get("options", [])
+                method = q.get("method", "General")
+            else:
+                question_text = str(q)
+                options = []
+                method = "General"
+
+            db.add(CompatibilityQuestion(
+                id=str(uuid4()).replace("-", ""),
+                session_id=session.id,
+                question_text=question_text,
+                options=json.dumps(options) if options else None,
+                category=method,
+                question_index=idx,
+            ))
+
+        db.commit()
+
+        questions = db.query(CompatibilityQuestion).filter(
+            CompatibilityQuestion.session_id == session_id
+        ).order_by(CompatibilityQuestion.question_index).all()
+        print(f"🔴 Saved {len(questions)} questions")
+
     print(f"🔴 Found {len(questions)} questions")
-    
-    # Return questions with options
+
     result = []
     for q in questions:
         options = []
@@ -366,14 +416,14 @@ async def get_compatibility_questions(
                 options = json.loads(q.options)
             except:
                 options = []
-        
+
         result.append({
             "id": q.id,
             "text": q.question_text,
             "options": options,
             "method": q.category or "General"
         })
-    
+
     return {
         "session_id": session.id,
         "questions": result
@@ -393,7 +443,7 @@ async def submit_compatibility_answers(
     
     session_id = request.get("session_id")
     answers = request.get("answers", [])
-    language = request.get("language", "en")
+    language = "en"
     
     print(f"🔴 session_id: {session_id}")
     print(f"🔴 answers count: {len(answers)}")
