@@ -867,40 +867,46 @@ async def get_all_game_questions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> List[Dict[str, Any]]:
-    #_require_chat_access(current_user)
-
-    """Get all questions and answers for the current user (both asked and received)"""
+    """Get all questions and answers for the current user (both asked and received).
+    Only returns users who are also mutual potential matches (same rule as Home screen)."""
     from app.models.chat_question import ChatQuestion
-    
+
     try:
         user_uuid = UUID(current_user.id)
-        
+
         print(f"Looking for questions involving user: {user_uuid}")
-        
+
+        # ✅ Ask SwipeService for the real mutual matches
+        valid_candidates = SwipeService.get_matches(db, current_user.id, 500)
+        valid_user_ids = {str(c.get('id')) for c in valid_candidates if c.get('id')}
+        print(f"Mutual matches: {len(valid_user_ids)}")
+
         questions = db.query(ChatQuestion).filter(
             or_(
                 ChatQuestion.user_id == str(user_uuid),
                 ChatQuestion.candidate_id == str(user_uuid)
             )
         ).all()
-        
+
         print(f"Found {len(questions)} total chat questions")
-        
+
         result = []
         for q in questions:
-            print(f"Processing question: {q.id}, user_id: {q.user_id}, candidate_id: {q.candidate_id}")
-            
             if str(q.user_id) == str(user_uuid):
-                other_user = db.query(User).filter(User.id == q.candidate_id).first()
-                other_name = other_user.full_name if other_user else "Unknown"
-                match_id = str(q.candidate_id)
+                other_id = str(q.candidate_id)
             else:
-                other_user = db.query(User).filter(User.id == q.user_id).first()
-                other_name = other_user.full_name if other_user else "Unknown"
-                match_id = str(q.user_id)
-            
+                other_id = str(q.user_id)
+
+            # ✅ Skip if the other user isn't a mutual match
+            if other_id not in valid_user_ids:
+                print(f"🔴 Skipping non-mutual chat question: {other_id}")
+                continue
+
+            other_user = db.query(User).filter(User.id == other_id).first()
+            other_name = other_user.full_name if other_user else "Unknown"
+
             result.append({
-                "match_id": match_id,
+                "match_id": other_id,
                 "match_name": other_name,
                 "question_text": q.question_text,
                 "answer_text": q.answer_text,
@@ -908,7 +914,7 @@ async def get_all_game_questions(
                 "question_index": q.question_index,
                 "created_at": q.created_at.isoformat(),
             })
-        
+
         print(f"Returning {len(result)} results")
         return result
     except Exception as e:
