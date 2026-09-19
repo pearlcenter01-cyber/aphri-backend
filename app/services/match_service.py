@@ -15,11 +15,11 @@ class MatchService:
     
     @staticmethod
     def get_user_matches(db: Session, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
-        """Get all matches for a user"""
+        """Get all matches for a user — only mutual potential matches"""
+        from app.services.swipe_service import SwipeService
+
         current_user = db.query(User).filter(User.id == user_id).first()
         matches = db.query(Match).filter(
-
-
             or_(
                 Match.user_1_id == user_id,
                 Match.user_2_id == user_id
@@ -27,26 +27,28 @@ class MatchService:
             Match.is_active == True,
             Match.status == MatchStatus.MATCHED
         ).order_by(Match.matched_at.desc()).limit(limit).all()
-        
+
+        # ✅ Ask SwipeService for the real mutual matches
+        try:
+            valid_candidates = SwipeService.get_matches(db, user_id, 200)
+            valid_user_ids = {str(c.get('id')) for c in valid_candidates if c.get('id')}
+        except Exception as e:
+            print(f"⚠️ SwipeService.get_matches failed: {e}")
+            valid_user_ids = set()
+
         result = []
         for match in matches:
-            # ✅ Skip if match.id is invalid
             if not match.id or match.id == '{}' or match.id == 'null':
                 continue
-                
-            # Get the other user's info
+
             other_user_id = match.get_other_user_id(user_id)
             other_user = db.query(User).filter(User.id == other_user_id).first()
-            # ✅ Skip if the other user doesn't match the current user's gender preference
-            if current_user and other_user and current_user.looking_for_gender:
-                pref = (current_user.looking_for_gender or '').lower()
-                other_gender = (other_user.gender or '').lower()
-                if pref == 'men' and other_gender != 'male':
-                    continue
-                if pref == 'women' and other_gender != 'female':
-                    continue
-            
-            # ✅ Get last message with guard
+
+            # ✅ Skip if the other user is not a mutual match
+            if str(other_user_id) not in valid_user_ids:
+                print(f"🔴 Skipping non-mutual match: {other_user.email if other_user else other_user_id}")
+                continue
+
             last_message = None
             try:
                 last_message = db.query(Message).filter(
@@ -54,8 +56,7 @@ class MatchService:
                 ).order_by(Message.created_at.desc()).first()
             except Exception as e:
                 print(f"Error getting last message for match {match.id}: {e}")
-            
-            # ✅ Get unread count with guard
+
             unread_count = 0
             try:
                 unread_count = db.query(Message).filter(
@@ -65,7 +66,7 @@ class MatchService:
                 ).count()
             except Exception as e:
                 print(f"Error getting unread count for match {match.id}: {e}")
-            
+
             result.append({
                 "match_id": str(match.id),
                 "user": {
@@ -82,7 +83,7 @@ class MatchService:
                 "unread_count": unread_count,
                 "is_active": match.is_active
             })
-        
+
         return result
     
     @staticmethod

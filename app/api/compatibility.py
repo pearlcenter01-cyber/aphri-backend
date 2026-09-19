@@ -358,6 +358,32 @@ async def get_compatibility_questions(
 
     print(f"🔴 Session found: {session.id}, status: {session.status}")
 
+    # ✅ If the session is already complete, don't regenerate — questions and report are final
+    if session.status == "complete":
+        print(f"🔴 Session complete — returning final questions")
+        questions = db.query(CompatibilityQuestion).filter(
+            CompatibilityQuestion.session_id == session_id
+        ).order_by(CompatibilityQuestion.question_index).all()
+        result = []
+        for q in questions:
+            options = []
+            if q.options:
+                try:
+                    options = json.loads(q.options)
+                except:
+                    options = []
+            result.append({
+                "id": q.id,
+                "text": q.question_text,
+                "options": options,
+                "method": q.category or "General",
+            })
+        return {
+            "session_id": session.id,
+            "status": "complete",
+            "questions": result,
+        }
+
     questions = db.query(CompatibilityQuestion).filter(
         CompatibilityQuestion.session_id == session_id
     ).order_by(CompatibilityQuestion.question_index).all()
