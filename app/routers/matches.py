@@ -760,15 +760,22 @@ async def get_game_questions(
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
-    Get the questions to show for a game between two users.
-    Source of truth: the CANDIDATE's custom_questions list.
-    Progress is tracked in ChatQuestion rows.
+    Return the question-game timeline between me and the candidate.
 
-    Flow:
-      - No row yet → return candidate's question #0, unanswered
-      - Row #0 exists with answer but no rating → return that answer for me to rate
-      - Row #0 answered AND rated → return candidate's question #1
-      - etc.
+    Timeline events (all shown as messages):
+      - question: the candidate's question to me, if released
+      - question: my question to the candidate, if released
+      - answer: the candidate's answer to my question
+      - answer: my answer to the candidate's question
+
+    Ratings are recorded but NOT returned as messages.
+
+    Release rule:
+      - Question N (from the candidate) appears when question N-1 is fully resolved.
+      - Question N (from me) appears when question N-1 is fully resolved.
+      A question is "fully resolved" when:
+        * its receiver has answered, AND
+        * its asker has rated that answer.
     """
     from app.models.chat_question import ChatQuestion
 
@@ -780,80 +787,131 @@ async def get_game_questions(
 
         _require_chat_access(current_user)
 
-        # Load candidate's custom questions
+        me = db.query(User).filter(User.id == user_uuid_str).first()
         candidate = db.query(User).filter(User.id == candidate_uuid_str).first()
+        if not me or not candidate:
+            return {"questions": []}
+
+        my_questions = []
+        if me.custom_questions:
+            try:
+                my_questions = json.loads(me.custom_questions)
+            except Exception:
+                my_questions = []
         candidate_questions = []
-        if candidate and candidate.custom_questions:
+        if candidate.custom_questions:
             try:
                 candidate_questions = json.loads(candidate.custom_questions)
             except Exception:
                 candidate_questions = []
 
-        # Existing rows between me and candidate
+        # Existing rows between us
         rows = db.query(ChatQuestion).filter(
             or_(
                 and_(ChatQuestion.user_id == user_uuid_str, ChatQuestion.candidate_id == candidate_uuid_str),
                 and_(ChatQuestion.user_id == candidate_uuid_str, ChatQuestion.candidate_id == user_uuid_str),
             )
-        ).order_by(ChatQuestion.question_index).all()
+        ).all()
 
-        # Build a per-index view:
-        #   for each index i, one row where user_id=candidate (they ask, I answer)
-        #   and one row where user_id=me (I ask, they answer)
-        result = []
+        def row_for(asker_id: str, receiver_id: str, idx: int):
+            for r in rows:
+                if r.user_id == asker_id and r.candidate_id == receiver_id and r.question_index == idx:
+                    return r
+            return None
 
-        # --- Asks from the candidate (I need to answer / I have answered) ---
-        for idx, qtext in enumerate(candidate_questions):
-            # Look for a row where the candidate is the asker, I am the receiver
-            row = next(
-                (r for r in rows if r.user_id == candidate_uuid_str and r.candidate_id == user_uuid_str and r.question_index == idx),
-                None,
-            )
-            result.append({
-                "id": row.id if row else f"pending_{candidate_uuid_str}_{idx}",
-                "user_id": candidate_uuid_str,           # asker = candidate
-                "candidate_id": user_uuid_str,           # receiver = me
-                "question_index": idx,
-                "question_text": qtext,
-                "answer_text": row.answer_text if row else None,
-                "rating": row.rating if row else None,
-                "is_answered": row.is_answered if row else False,
-                "created_at": row.created_at.isoformat() if row else datetime.utcnow().isoformat(),
-                "answered_at": row.answered_at.isoformat() if row and row.answered_at else None,
-            })
+        # A question at idx is "resolved" if:
+        #   - a row exists for it (from its asker to its receiver), AND
+        #   - is_answered is True, AND
+        #   - rating is not None
+        def is_resolved(asker_id: str, receiver_id: str, idx: int) -> bool:
+            r = row_for(asker_id, receiver_id, idx)
+            return bool(r and r.is_answered and r.rating is not None)
 
-        # --- Asks from me (the candidate answers / has answered, I rate) ---
-        my_questions = []
-        if current_user.custom_questions:
-            try:
-                my_questions = json.loads(current_user.custom_questions)
-            except Exception:
-                my_questions = []
+        # A question at idx is "released" if all lower indexes are resolved
+        def is_released(asker_id: str, receiver_id: str, idx: int) -> bool:
+            for lower in range(idx):
+                if not is_resolved(asker_id, receiver_id, lower):
+                    return False
+            return True
 
-        for idx, qtext in enumerate(my_questions):
-            row = next(
-                (r for r in rows if r.user_id == user_uuid_str and r.candidate_id == candidate_uuid_str and r.question_index == idx),
-                None,
-            )
-            result.append({
-                "id": row.id if row else f"pending_{user_uuid_str}_{idx}",
-                "user_id": user_uuid_str,                # asker = me
-                "candidate_id": candidate_uuid_str,      # receiver = candidate
-                "question_index": idx,
-                "question_text": qtext,
-                "answer_text": row.answer_text if row else None,
-                "rating": row.rating if row else None,
-                "is_answered": row.is_answered if row else False,
-                "created_at": row.created_at.isoformat() if row else datetime.utcnow().isoformat(),
-                "answered_at": row.answered_at.isoformat() if row and row.answered_at else None,
-            })
+        timeline = []
 
-        # Sort: candidate's questions first (things I need to interact with),
-        # then mine, each in index order
-        result.sort(key=lambda r: (0 if r["candidate_id"] == user_uuid_str else 1, r["question_index"]))
+        # Build the timeline for the candidate's questions to me and mine to the candidate.
+        # Iterate index 0..2, and interleave events by their natural order.
+        max_len = max(len(candidate_questions), len(my_questions), 0)
+
+        for idx in range(max_len):
+            # --- Candidate's question to me ---
+            if idx < len(candidate_questions):
+                if is_released(candidate_uuid_str, user_uuid_str, idx):
+                    row = row_for(candidate_uuid_str, user_uuid_str, idx)
+                    # 1. Question
+                    timeline.append({
+                        "id": row.id if row else f"pending_{candidate_uuid_str}_{idx}",
+                        "user_id": candidate_uuid_str,          # asker
+                        "candidate_id": user_uuid_str,          # receiver (me)
+                        "question_index": idx,
+                        "question_text": candidate_questions[idx],
+                        "answer_text": row.answer_text if row else None,
+                        "rating": row.rating if row else None,
+                        "is_answered": row.is_answered if row else False,
+                        "created_at": row.created_at.isoformat() if row else datetime.utcnow().isoformat(),
+                        "answered_at": row.answered_at.isoformat() if row and row.answered_at else None,
+                    })
+                    # 2. My answer to the candidate's question (if I've answered)
+                    if row and row.is_answered and row.answer_text:
+                        timeline.append({
+                            "id": f"{row.id}_answer",
+                            "user_id": user_uuid_str,           # answerer (me)
+                            "candidate_id": candidate_uuid_str,
+                            "question_index": idx,
+                            "question_text": candidate_questions[idx],
+                            "answer_text": row.answer_text,
+                            "rating": row.rating,
+                            "is_answered": True,
+                            "created_at": (row.answered_at or row.created_at).isoformat(),
+                            "answered_at": (row.answered_at or row.created_at).isoformat(),
+                            "is_answer_event": True,
+                        })
+
+            # --- My question to the candidate ---
+            if idx < len(my_questions):
+                if is_released(user_uuid_str, candidate_uuid_str, idx):
+                    row = row_for(user_uuid_str, candidate_uuid_str, idx)
+                    # 1. My question
+                    timeline.append({
+                        "id": row.id if row else f"pending_{user_uuid_str}_{idx}",
+                        "user_id": user_uuid_str,               # asker (me)
+                        "candidate_id": candidate_uuid_str,     # receiver
+                        "question_index": idx,
+                        "question_text": my_questions[idx],
+                        "answer_text": row.answer_text if row else None,
+                        "rating": row.rating if row else None,
+                        "is_answered": row.is_answered if row else False,
+                        "created_at": row.created_at.isoformat() if row else datetime.utcnow().isoformat(),
+                        "answered_at": row.answered_at.isoformat() if row and row.answered_at else None,
+                    })
+                    # 2. Candidate's answer to my question (if they've answered)
+                    if row and row.is_answered and row.answer_text:
+                        timeline.append({
+                            "id": f"{row.id}_answer",
+                            "user_id": candidate_uuid_str,       # answerer (candidate)
+                            "candidate_id": user_uuid_str,
+                            "question_index": idx,
+                            "question_text": my_questions[idx],
+                            "answer_text": row.answer_text,
+                            "rating": row.rating,
+                            "is_answered": True,
+                            "created_at": (row.answered_at or row.created_at).isoformat(),
+                            "answered_at": (row.answered_at or row.created_at).isoformat(),
+                            "is_answer_event": True,
+                        })
+
+        # Sort by created_at ascending so the whole conversation is chronological
+        timeline.sort(key=lambda e: e.get("created_at") or "")
 
         return {
-            "questions": result,
+            "questions": timeline,
             "user_id": user_uuid_str,
             "candidate_id": candidate_uuid_str,
         }
@@ -862,7 +920,6 @@ async def get_game_questions(
         import traceback
         traceback.print_exc()
         return {"questions": []}
-
 
         
 @router.get("/game/all-questions")
