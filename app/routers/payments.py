@@ -40,14 +40,24 @@ async def initiate_payment(
 
 @router.get("/verify")
 async def verify_payment(
-    tx_ref: str,
-    current_user: User = Depends(get_current_user),
+    tx_ref: str = "",
+    trx_ref: str = "",
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
-    Verify a payment after user returns from Chapa checkout
+    Verify a payment. Public endpoint — called by Chapa (uses trx_ref)
+    and by the app after redirect (uses tx_ref).
     """
-    return await PaymentService.verify_payment(db, tx_ref, current_user.id)
+    ref = trx_ref or tx_ref
+    if not ref:
+        raise HTTPException(status_code=400, detail="Missing transaction reference")
+
+    # Find the payment record to know which user it belongs to
+    payment = db.query(Payment).filter(Payment.chapa_tx_ref == ref).first()
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+
+    return await PaymentService.verify_payment(db, ref, str(payment.user_id))
 
 @router.get("/redirect", response_class=HTMLResponse)
 async def payment_redirect(tx_ref: str = ""):

@@ -759,53 +759,101 @@ async def get_game_questions(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
-    """Get all questions and answers for a game between two users"""
+    """
+    Get the questions to show for a game between two users.
+    Source of truth: the CANDIDATE's custom_questions list.
+    Progress is tracked in ChatQuestion rows.
+
+    Flow:
+      - No row yet → return candidate's question #0, unanswered
+      - Row #0 exists with answer but no rating → return that answer for me to rate
+      - Row #0 answered AND rated → return candidate's question #1
+      - etc.
+    """
     from app.models.chat_question import ChatQuestion
 
     try:
         user_uuid = UUID(current_user.id)
         candidate_uuid = UUID(candidate_id)
-
         user_uuid_str = str(user_uuid)
         candidate_uuid_str = str(candidate_uuid)
 
-        print(f"Getting questions between {user_uuid_str} and {candidate_uuid_str}")
-
-        match = db.query(Match).filter(
-            or_(
-                and_(Match.user_1_id == user_uuid_str, Match.user_2_id == candidate_uuid_str),
-                and_(Match.user_1_id == candidate_uuid_str, Match.user_2_id == user_uuid_str),
-            )
-        ).first()
-
-        # ✅ Subscription + credits required to view questions
         _require_chat_access(current_user)
 
-        questions = db.query(ChatQuestion).filter(
+        # Load candidate's custom questions
+        candidate = db.query(User).filter(User.id == candidate_uuid_str).first()
+        candidate_questions = []
+        if candidate and candidate.custom_questions:
+            try:
+                candidate_questions = json.loads(candidate.custom_questions)
+            except Exception:
+                candidate_questions = []
+
+        # Existing rows between me and candidate
+        rows = db.query(ChatQuestion).filter(
             or_(
                 and_(ChatQuestion.user_id == user_uuid_str, ChatQuestion.candidate_id == candidate_uuid_str),
-                and_(ChatQuestion.user_id == candidate_uuid_str, ChatQuestion.candidate_id == user_uuid_str)
+                and_(ChatQuestion.user_id == candidate_uuid_str, ChatQuestion.candidate_id == user_uuid_str),
             )
         ).order_by(ChatQuestion.question_index).all()
 
-        print(f"Found {len(questions)} questions")
+        # Build a per-index view:
+        #   for each index i, one row where user_id=candidate (they ask, I answer)
+        #   and one row where user_id=me (I ask, they answer)
+        result = []
+
+        # --- Asks from the candidate (I need to answer / I have answered) ---
+        for idx, qtext in enumerate(candidate_questions):
+            # Look for a row where the candidate is the asker, I am the receiver
+            row = next(
+                (r for r in rows if r.user_id == candidate_uuid_str and r.candidate_id == user_uuid_str and r.question_index == idx),
+                None,
+            )
+            result.append({
+                "id": row.id if row else f"pending_{candidate_uuid_str}_{idx}",
+                "user_id": candidate_uuid_str,           # asker = candidate
+                "candidate_id": user_uuid_str,           # receiver = me
+                "question_index": idx,
+                "question_text": qtext,
+                "answer_text": row.answer_text if row else None,
+                "rating": row.rating if row else None,
+                "is_answered": row.is_answered if row else False,
+                "created_at": row.created_at.isoformat() if row else datetime.utcnow().isoformat(),
+                "answered_at": row.answered_at.isoformat() if row and row.answered_at else None,
+            })
+
+        # --- Asks from me (the candidate answers / has answered, I rate) ---
+        my_questions = []
+        if current_user.custom_questions:
+            try:
+                my_questions = json.loads(current_user.custom_questions)
+            except Exception:
+                my_questions = []
+
+        for idx, qtext in enumerate(my_questions):
+            row = next(
+                (r for r in rows if r.user_id == user_uuid_str and r.candidate_id == candidate_uuid_str and r.question_index == idx),
+                None,
+            )
+            result.append({
+                "id": row.id if row else f"pending_{user_uuid_str}_{idx}",
+                "user_id": user_uuid_str,                # asker = me
+                "candidate_id": candidate_uuid_str,      # receiver = candidate
+                "question_index": idx,
+                "question_text": qtext,
+                "answer_text": row.answer_text if row else None,
+                "rating": row.rating if row else None,
+                "is_answered": row.is_answered if row else False,
+                "created_at": row.created_at.isoformat() if row else datetime.utcnow().isoformat(),
+                "answered_at": row.answered_at.isoformat() if row and row.answered_at else None,
+            })
+
+        # Sort: candidate's questions first (things I need to interact with),
+        # then mine, each in index order
+        result.sort(key=lambda r: (0 if r["candidate_id"] == user_uuid_str else 1, r["question_index"]))
 
         return {
-            "questions": [
-                {
-                    "id": str(q.id),
-                    "user_id": str(q.user_id),
-                    "candidate_id": str(q.candidate_id),
-                    "question_index": q.question_index,
-                    "question_text": q.question_text,
-                    "answer_text": q.answer_text,
-                    "rating": q.rating,
-                    "is_answered": q.is_answered,
-                    "created_at": q.created_at.isoformat(),
-                    "answered_at": q.answered_at.isoformat() if q.answered_at else None,
-                }
-                for q in questions
-            ],
+            "questions": result,
             "user_id": user_uuid_str,
             "candidate_id": candidate_uuid_str,
         }
