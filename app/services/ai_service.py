@@ -52,20 +52,18 @@ class AIService:
         
         The framework/method it belongs to.
         
-        Return ONLY a JSON array with this format:
-        [
-            {{
-                "question": "When your partner expresses a need that conflicts with your own, what do you typically do?",
-                "options": [
-                    "I prioritize my partner's need and sacrifice my own",
-                    "I express my need and work toward a compromise",
-                    "I withdraw and hope the conflict resolves itself",
-                    "I assert my need and expect my partner to accommodate"
-                ],
-                "method": "Gottman Method"
-            }},
-            ...
-        ]
+        Return ONLY a JSON array with 5 objects. Each object must have this shape:
+[
+    {{
+        "question": "<unique psychological question>",
+        "options": ["<option A>", "<option B>", "<option C>", "<option D>"],
+        "method": "<Gottman Method | Attachment Theory | Big Five>"
+    }},
+    ...
+]
+
+
+
         """
 
         try:

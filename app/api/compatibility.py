@@ -293,6 +293,12 @@ async def respond_compatibility(
     questions = questions[:5]
     print(f"🔴 Final question count after cap: {len(questions)}")
 
+    # ✅ FIX 1: wipe old responses before saving new questions
+    db.query(CompatibilityResponse).filter(
+        CompatibilityResponse.session_id == session.id
+    ).delete(synchronize_session=False)
+    db.commit()
+
     # Save questions to database
     print("🔴 Saving questions to database...")
     for idx, q in enumerate(questions):
@@ -359,6 +365,17 @@ async def get_compatibility_questions(
     # ✅ Self-heal: if both agreed but no questions, generate them now
     if not questions and session.status in ("both_agreed", "answering"):
         print("🔴 No questions found — generating in English...")
+
+        # ✅ FIX 1 + FIX 2: wipe old responses and reset session state
+        db.query(CompatibilityResponse).filter(
+            CompatibilityResponse.session_id == session.id
+        ).delete(synchronize_session=False)
+        session.status = "both_agreed"
+        session.report = None
+        session.score = None
+        session.completed_at = None
+        db.commit()
+
         user = db.query(User).filter(User.id == session.user_id).first()
         partner = db.query(User).filter(User.id == session.partner_id).first()
 
@@ -461,8 +478,17 @@ async def submit_compatibility_answers(
         print(f"❌ Session not found: {session_id}")
         raise HTTPException(status_code=404, detail="Session not found")
     
-    print(f"🔴 Session found: {session.id}")
-    
+    print(f"🔴 Session found: {session.id}, status: {session.status}")
+
+    # ✅ FIX 3a: idempotent — if already complete, return existing report
+    if session.status == "complete":
+        print("🔴 Session already complete — returning existing report")
+        return {
+            "message": "Already analyzed",
+            "status": "complete",
+            "report": session.report,
+        }
+
     # Save answers
     for answer in answers:
         question_id = answer.get("question_id")
@@ -493,27 +519,38 @@ async def submit_compatibility_answers(
     
     db.commit()
     print("🔴 All answers saved")
-    
-    # Check if both users have answered all questions
+
+    # ✅ FIX 3b: only count current questions and only the two real partners
     all_questions = db.query(CompatibilityQuestion).filter(
         CompatibilityQuestion.session_id == session_id
     ).all()
-    
+    valid_qids = [q.id for q in all_questions]
+
     user_responses = db.query(CompatibilityResponse).filter(
         CompatibilityResponse.session_id == session_id,
-        CompatibilityResponse.user_id == current_user.id
+        CompatibilityResponse.user_id == session.user_id,
+        CompatibilityResponse.question_id.in_(valid_qids),
     ).all()
-    
+
     partner_responses = db.query(CompatibilityResponse).filter(
         CompatibilityResponse.session_id == session_id,
-        CompatibilityResponse.user_id != current_user.id
+        CompatibilityResponse.user_id == session.partner_id,
+        CompatibilityResponse.question_id.in_(valid_qids),
     ).all()
-    
+
     print(f"🔴 Total questions: {len(all_questions)}")
-    print(f"🔴 Your answers: {len(user_responses)}")
+    print(f"🔴 User answers: {len(user_responses)}")
     print(f"🔴 Partner answers: {len(partner_responses)}")
-    
+
     if len(user_responses) == len(all_questions) and len(partner_responses) == len(all_questions):
+
+
+
+
+
+
+
+
         print("🔴 Both users have answered all questions - analyzing!")
         session.status = "analyzing"
         db.commit()
