@@ -515,8 +515,26 @@ async def submit_compatibility_answers(
             "report": session.report,
         }
 
+    # ✅ Charge 10 credits per submit — only if this user hasn't already submitted
+    existing_responses = db.query(CompatibilityResponse).filter(
+        CompatibilityResponse.session_id == session_id,
+        CompatibilityResponse.user_id == current_user.id,
+    ).count()
+
+    if existing_responses == 0:
+        from app.services.credit_service import CreditService
+        CreditService.spend_credits(
+            db,
+            user_id=current_user.id,
+            amount=10,
+            action="compatibility_answers",
+        )
+        print(f"🔴 Charged 10 credits to user {current_user.id} for compatibility answers")
+
     # Save answers
     for answer in answers:
+
+
         question_id = answer.get("question_id")
         response_text = answer.get("response")
         

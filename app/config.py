@@ -85,15 +85,15 @@ class Settings:
             "price": 300,
             "name": "Starter",
             "duration_days": 30,
-            "credits": 20,
-            "description": "20 credits valid for 30 days"
+            "credits": 300,
+            "description": "300 credits valid for 30 days"
         },
         "standard": {
             "price": 500,
             "name": "Standard",
             "duration_days": 30,
-            "credits": 50,
-            "description": "50 credits valid for 30 days"
+            "credits": 500,
+            "description": "500 credits valid for 30 days"
         },
         "premium": {
             "price": 1500,
@@ -105,12 +105,11 @@ class Settings:
     }
 
     # ============================================================
-    # CREDIT COSTS
+    # CREDIT COSTS  (1 ETB = 1 credit)
     # ============================================================
-    CREDIT_COST_ANSWER_QUESTIONS = 1
-    CREDIT_COST_RATE_ANSWERS = 1
-    CREDIT_COST_COMPATIBILITY_TEST = 10
-    
+    CREDIT_COST_ANSWER_QUESTIONS = 2
+    CREDIT_COST_RATE_ANSWERS = 2
+
     # ============================================================
     # FEATURE TIERS
     # ============================================================

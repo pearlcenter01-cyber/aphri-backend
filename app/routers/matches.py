@@ -22,60 +22,21 @@ from app.services.credit_service import CreditService
 router = APIRouter()
 
 
-
-CHAT_START_COST = 10
-
-
 def _require_chat_access(user: User):
+    """
+    Chat access requires an active subscription AND credits remaining.
+    Premium (unlimited-credit) subscribers always pass.
+    """
     from app.utils.constants import UserStatus
-    has_credits = (user.credits_remaining or 0) > 0
-    has_premium = user.subscription_status == UserStatus.PREMIUM
-    if not has_credits and not has_premium:
+
+    has_subscription = user.subscription_status == UserStatus.PREMIUM
+    has_credits = user.has_unlimited_credits or (user.credits_remaining or 0) > 0
+
+    if not has_subscription or not has_credits:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="Subscription required. Please upgrade to view custom questions.",
+            detail="Subscription with credits required to access chats.",
         )
-
-
-def _charge_chat_start(db: Session, match: Match, user: User):
-    """Charge 10 credits to the initiator of the chat. Recipients read and reply free."""
-    from app.utils.constants import UserStatus
-
-    if match.user_1_id != user.id and match.user_2_id != user.id:
-        raise HTTPException(status_code=403, detail="Not part of this match")
-
-    # If there is an initiator and the current user is not them, no charge.
-    if match.initiator_id and match.initiator_id != user.id:
-        return
-
-    if match.user_1_id == user.id:
-        already_paid = match.chat_charge_paid_by_user_1
-    else:
-        already_paid = match.chat_charge_paid_by_user_2
-
-    if already_paid:
-        return
-
-    if user.subscription_status == UserStatus.PREMIUM:
-        if match.user_1_id == user.id:
-            match.chat_charge_paid_by_user_1 = True
-        else:
-            match.chat_charge_paid_by_user_2 = True
-        db.commit()
-        return
-
-    CreditService.spend_credits(
-        db,
-        user_id=user.id,
-        amount=CHAT_START_COST,
-        action="start_chat",
-    )
-
-    if match.user_1_id == user.id:
-        match.chat_charge_paid_by_user_1 = True
-    else:
-        match.chat_charge_paid_by_user_2 = True
-    db.commit()
 
 
 
@@ -185,11 +146,8 @@ async def get_match_messages(
     if match.user_1_id != current_user.id and match.user_2_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not part of this match")
 
-    # Only gate the initiator. Recipients read/reply free.
-    if not match.initiator_id or match.initiator_id == current_user.id:
-        _require_chat_access(current_user)
-
-    _charge_chat_start(db, match, current_user)
+    # ✅ Subscription + credits required to open a chat
+    _require_chat_access(current_user)
 
     return MatchService.get_match_messages(db, match_id, current_user.id, limit, offset)
 
@@ -820,11 +778,8 @@ async def get_game_questions(
             )
         ).first()
 
-        if match:
-            # Only gate the initiator. Recipients read/reply free.
-            if not match.initiator_id or match.initiator_id == current_user.id:
-                _require_chat_access(current_user)
-            _charge_chat_start(db, match, current_user)
+        # ✅ Subscription + credits required to view questions
+        _require_chat_access(current_user)
 
         questions = db.query(ChatQuestion).filter(
             or_(

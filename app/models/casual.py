@@ -41,3 +41,15 @@ class CasualResponse(Base):
     # Relationships
     question = relationship("CasualQuestion", back_populates="responses")
     responder = relationship("User", back_populates="casual_responses")
+
+
+class CasualPayment(Base):
+    """Records that a user has paid the casual chat fee for a specific partner.
+    One row per (user_id, partner_id) pair. Once a row exists, no further
+    charges apply for that pair."""
+    __tablename__ = "casual_payments"
+
+    id = Column(UUIDType, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(UUIDType, ForeignKey("users.id"), nullable=False, index=True)
+    partner_id = Column(UUIDType, ForeignKey("users.id"), nullable=False, index=True)
+    paid_at = Column(DateTime, default=func.now(), nullable=False)    

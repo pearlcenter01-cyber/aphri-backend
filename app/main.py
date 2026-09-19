@@ -31,7 +31,7 @@ from app.models.chat_question import ChatQuestion
 from app.models.match_question_game import MatchQuestionGame
 from app.models.compatibility import CompatibilitySession
 from app.models.real_match import RealMatch
-from app.models.casual import CasualQuestion, CasualResponse
+from app.models.casual import CasualQuestion, CasualResponse, CasualPayment
 
 # ============================================================
 # CREATE DATABASE TABLES (First run only)

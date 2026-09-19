@@ -20,10 +20,20 @@ async def get_current_subscription(
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
-    Get current user's subscription details
+    Get current user's subscription details, including credit balance.
     """
-    return SubscriptionService.get_subscription_plan_info(db, current_user.id)
+    info = SubscriptionService.get_subscription_plan_info(db, current_user.id)
 
+    # ✅ Include credit balance so the frontend can decide chat access in one call
+    from app.services.credit_service import CreditService
+    balance = CreditService.get_balance(db, current_user.id)
+
+    info["credits_remaining"] = balance.get("credits_remaining", 0)
+    info["has_unlimited_credits"] = balance.get("has_unlimited", False)
+    info["plan_type"] = balance.get("plan_type")
+
+    return info
+    
 @router.get("/history")
 async def get_subscription_history(
     current_user: User = Depends(get_current_user),
