@@ -769,6 +769,7 @@ async def get_game_questions(
                     # Question event (sender = candidate, the asker)
                     timeline.append({
                         "id": f"q_{base_id}",
+                        "db_id": row.id if row else None,
                         "user_id": candidate_uuid_str,
                         "candidate_id": user_uuid_str,
                         "question_index": idx,
@@ -785,6 +786,7 @@ async def get_game_questions(
                     if row and row.is_answered and row.answer_text:
                         timeline.append({
                             "id": f"a_{base_id}",
+                            "db_id": row.id,
                             "user_id": user_uuid_str,
                             "candidate_id": candidate_uuid_str,
                             "question_index": idx,
@@ -806,6 +808,7 @@ async def get_game_questions(
                     # Question event (sender = me, the asker)
                     timeline.append({
                         "id": f"q_{base_id}",
+                        "db_id": row.id if row else None,
                         "user_id": user_uuid_str,
                         "candidate_id": candidate_uuid_str,
                         "question_index": idx,
@@ -822,6 +825,7 @@ async def get_game_questions(
                     if row and row.is_answered and row.answer_text:
                         timeline.append({
                             "id": f"a_{base_id}",
+                            "db_id": row.id,
                             "user_id": candidate_uuid_str,
                             "candidate_id": user_uuid_str,
                             "question_index": idx,
