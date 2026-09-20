@@ -209,34 +209,76 @@ class QuestionGameService:
     ) -> Dict[str, Any]:
         """
         Submit an answer to the next unanswered question between me and the candidate.
-        The row's user_id is the asker (candidate), candidate_id is the receiver (me).
+        Creates the ChatQuestion row on the fly if it doesn't exist.
         """
+        # Try to find an existing row first
         chat_question = db.query(ChatQuestion).filter(
             ChatQuestion.user_id == candidate_id,
             ChatQuestion.candidate_id == user_id,
             ChatQuestion.is_answered == False
         ).order_by(ChatQuestion.question_index).first()
 
-        if not chat_question:
-            chat_question = db.query(ChatQuestion).filter(
-                or_(
-                    and_(ChatQuestion.user_id == user_id, ChatQuestion.candidate_id == candidate_id),
-                    and_(ChatQuestion.user_id == candidate_id, ChatQuestion.candidate_id == user_id),
-                ),
-                ChatQuestion.is_answered == False
-            ).order_by(ChatQuestion.question_index).first()
+        if chat_question:
+            chat_question.answer_text = answer_text
+            chat_question.is_answered = True
+            chat_question.answered_at = datetime.utcnow()
+            db.commit()
+            return {
+                'status': 'need_rating',
+                'message': 'Answer submitted!',
+                'question_id': chat_question.id,
+                'candidate_id': candidate_id,
+                'question_index': chat_question.question_index,
+                'total_questions': 3
+            }
 
-        if not chat_question:
-            return {'error': 'No active question to answer'}
+        # None exists — create one from the candidate's custom_questions
+        candidate = db.query(User).filter(User.id == candidate_id).first()
+        if not candidate or not candidate.custom_questions:
+            return {'error': 'No question available to answer'}
 
-        chat_question.answer_text = answer_text
-        chat_question.is_answered = True
-        chat_question.answered_at = datetime.utcnow()
+        try:
+            questions = json.loads(candidate.custom_questions)
+        except Exception:
+            return {'error': 'Invalid question data'}
+
+        # Find the lowest index that hasn't been created yet
+        existing_indices = {
+            q.question_index
+            for q in db.query(ChatQuestion).filter(
+                ChatQuestion.user_id == candidate_id,
+                ChatQuestion.candidate_id == user_id,
+            ).all()
+        }
+
+        next_idx = None
+        for i in range(len(questions)):
+            if i not in existing_indices:
+                next_idx = i
+                break
+
+        if next_idx is None:
+            return {'error': 'No question available to answer'}
+
+        chat_question = ChatQuestion(
+            id=str(uuid4()).replace('-', ''),
+            match_id=None,
+            user_id=candidate_id,        # asker = candidate
+            candidate_id=user_id,        # receiver = me
+            question_index=next_idx,
+            question_text=questions[next_idx],
+            answer_text=answer_text,
+            is_answered=True,
+            created_at=datetime.utcnow(),
+            answered_at=datetime.utcnow(),
+        )
+        db.add(chat_question)
         db.commit()
+        db.refresh(chat_question)
 
         return {
             'status': 'need_rating',
-            'message': 'Answer submitted! Rate it now.',
+            'message': 'Answer submitted!',
             'question_id': chat_question.id,
             'candidate_id': candidate_id,
             'question_index': chat_question.question_index,
