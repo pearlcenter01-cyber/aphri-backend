@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List, Dict, Any
 from uuid import uuid4
 import json
-
+from sqlalchemy import or_, and_
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.services.ai_service import AIService
@@ -37,11 +37,20 @@ async def request_compatibility(
     if not partner_id:
         raise HTTPException(status_code=400, detail="partner_id is required")
     
-    # Check if session already exists
+        # Check if ANY session exists between the two users, in either direction.
+    # Only one compatibility session per pair is allowed.
     existing = db.query(CompatibilitySession).filter(
-        CompatibilitySession.user_id == current_user.id,
-        CompatibilitySession.partner_id == partner_id,
-        CompatibilitySession.status.in_(["pending", "both_agreed", "answering"])
+        or_(
+            and_(
+                CompatibilitySession.user_id == current_user.id,
+                CompatibilitySession.partner_id == partner_id,
+            ),
+            and_(
+                CompatibilitySession.user_id == partner_id,
+                CompatibilitySession.partner_id == current_user.id,
+            ),
+        ),
+        CompatibilitySession.status.in_(["pending", "both_agreed", "answering", "complete"])
     ).first()
     
     if existing:
