@@ -562,7 +562,7 @@ async def rate_single_answer(
         question.rated_at = datetime.utcnow()
         db.commit()
         
-                all_questions = db.query(ChatQuestion).filter(
+        all_questions = db.query(ChatQuestion).filter(
             ChatQuestion.user_id == question.user_id,
             ChatQuestion.candidate_id == question.candidate_id
         ).all()
