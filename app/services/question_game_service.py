@@ -105,12 +105,13 @@ class QuestionGameService:
             db.add(game)
             db.commit()
             
-            # Create chat question record
+            
+            # Create chat question record — the CANDIDATE is the asker
             chat_question = ChatQuestion(
                 id=str(uuid4()).replace('-', ''),
                 match_id=None,
-                user_id=user_id,
-                candidate_id=candidate_id,
+                user_id=candidate_id,       # ← the other person asks
+                candidate_id=user_id,       # ← I receive
                 question_index=0,
                 question_text=questions[0],
                 is_answered=False
