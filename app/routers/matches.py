@@ -838,10 +838,25 @@ async def get_game_questions(
                             "is_answer_event": True,
                         })
 
-        timeline.sort(key=lambda e: e.get("created_at") or "")
+                timeline.sort(key=lambda e: e.get("created_at") or "")
+
+        # ✅ Game is complete when all 3 of my questions have their answers rated,
+        #    AND all 3 of the candidate's questions have my answers rated.
+        my_questions = [e for e in timeline if not e["is_answer_event"] and e["user_id"] == user_uuid_str]
+        my_answers = [e for e in timeline if e["is_answer_event"] and e["user_id"] == user_uuid_str]
+        their_questions = [e for e in timeline if not e["is_answer_event"] and e["user_id"] != user_uuid_str]
+        their_answers = [e for e in timeline if e["is_answer_event"] and e["user_id"] != user_uuid_str]
+
+        game_complete = (
+            len(my_questions) >= 3 and all(q["is_answered"] for q in my_questions[:3]) and
+            len(their_answers) >= 3 and all(a["rating"] is not None for a in their_answers[:3]) and
+            len(their_questions) >= 3 and all(q["is_answered"] for q in their_questions[:3]) and
+            len(my_answers) >= 3 and all(a["rating"] is not None for a in my_answers[:3])
+        )
 
         return {
             "questions": timeline,
+            "game_complete": game_complete,
             "user_id": user_uuid_str,
             "candidate_id": candidate_uuid_str,
         }
