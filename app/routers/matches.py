@@ -562,107 +562,50 @@ async def rate_single_answer(
         question.rated_at = datetime.utcnow()
         db.commit()
         
-        game = db.query(MatchQuestionGame).filter(
-            MatchQuestionGame.user_id == question.user_id,
-            MatchQuestionGame.candidate_id == question.candidate_id,
-            MatchQuestionGame.is_complete == False
-        ).first()
-        
-        if game:
-            all_questions = db.query(ChatQuestion).filter(
-                ChatQuestion.user_id == question.user_id,
-                ChatQuestion.candidate_id == question.candidate_id
-            ).all()
-            
-            rated = [q for q in all_questions if q.is_answered and q.rating]
-            
-            if len(rated) >= 3:
-                return QuestionGameService._calculate_final_score(game, db)
-            
-            next_question = db.query(ChatQuestion).filter(
-                ChatQuestion.user_id == question.user_id,
-                ChatQuestion.candidate_id == question.candidate_id,
-                ChatQuestion.is_answered == False
-            ).order_by(ChatQuestion.question_index).first()
-            
-            if next_question:
-                return {
-                    'status': 'next_question',
-                    'question_id': next_question.id,
-                    'question_text': next_question.question_text,
-                    'question_index': next_question.question_index,
-                    'total_questions': 3,
-                    'progress': f'Question {next_question.question_index + 1} of 3'
-                }
-            
-            return {
-                'status': 'complete',
-                'message': 'All questions answered and rated',
-                'game_id': game.id
-            }
-        
-        # ✅ No game record - handle potential match
-        # Check if there are more questions to ask
-        all_questions = db.query(ChatQuestion).filter(
+                all_questions = db.query(ChatQuestion).filter(
             ChatQuestion.user_id == question.user_id,
             ChatQuestion.candidate_id == question.candidate_id
         ).all()
-        
-        answered = [q for q in all_questions if q.is_answered]
+
         rated = [q for q in all_questions if q.is_answered and q.rating]
-        
-        # Get the user who asked the question
-        asker = db.query(User).filter(User.id == question.user_id).first()
-        
-        # Check if all 3 questions are answered AND rated
+
+        # ✅ If all 3 are rated, compute the final score (create game row if needed)
         if len(rated) >= 3:
-            # All 3 rated - calculate score (create real match if applicable)
-            # Create a game record to use existing calculation
-            game = MatchQuestionGame(
-                id=str(uuid4()).replace('-', ''),
-                user_id=question.user_id,
-                candidate_id=question.candidate_id,
-                is_complete=False
-            )
-            db.add(game)
-            db.commit()
+            game = db.query(MatchQuestionGame).filter(
+                MatchQuestionGame.user_id == question.user_id,
+                MatchQuestionGame.candidate_id == question.candidate_id,
+                MatchQuestionGame.is_complete == False
+            ).first()
+
+            if not game:
+                game = MatchQuestionGame(
+                    id=str(uuid4()).replace('-', ''),
+                    user_id=question.user_id,
+                    candidate_id=question.candidate_id,
+                    is_complete=False
+                )
+                db.add(game)
+                db.commit()
+
             return QuestionGameService._calculate_final_score(game, db)
-        print(f"🔍 ASKER: {asker}")
-        print(f"🔍 ASKER EMAIL: {asker.email if asker else 'None'}")
-        print(f"🔍 ASKER CUSTOM QUESTIONS: {asker.custom_questions if asker else 'None'}")
-        
-        # Check if there are more questions to ask
-        if asker and asker.custom_questions:
-            try:
-                custom_questions = json.loads(asker.custom_questions)
-                next_index = len(answered)  # 0, 1, 2
-                
-                if next_index < len(custom_questions):
-                    # Create the next question
-                    new_question = ChatQuestion(
-                        id=str(uuid4()).replace('-', ''),
-                        match_id=None,
-                        user_id=question.user_id,
-                        candidate_id=question.candidate_id,
-                        question_index=next_index,
-                        question_text=custom_questions[next_index],
-                        is_answered=False
-                    )
-                    db.add(new_question)
-                    db.commit()
-                    
-                    return {
-                        'status': 'next_question',
-                        'question_id': new_question.id,
-                        'question_text': new_question.question_text,
-                        'question_index': new_question.question_index,
-                        'total_questions': 3,
-                        'progress': f'Question {new_question.question_index + 1} of 3'
-                    }
-            except Exception as e:
-                print(f"Error creating next question: {e}")
-        
-        # No more questions
+
+        # ✅ Otherwise return the next unanswered question if any
+        next_question = db.query(ChatQuestion).filter(
+            ChatQuestion.user_id == question.user_id,
+            ChatQuestion.candidate_id == question.candidate_id,
+            ChatQuestion.is_answered == False
+        ).order_by(ChatQuestion.question_index).first()
+
+        if next_question:
+            return {
+                'status': 'next_question',
+                'question_id': next_question.id,
+                'question_text': next_question.question_text,
+                'question_index': next_question.question_index,
+                'total_questions': 3,
+                'progress': f'Question {next_question.question_index + 1} of 3'
+            }
+
         return {
             'status': 'complete',
             'message': 'All questions answered',

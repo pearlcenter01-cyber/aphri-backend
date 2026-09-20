@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Any, List
 from sqlalchemy.orm import Session
+from sqlalchemy import or_, and_
 from uuid import uuid4
 from datetime import datetime
 import json
@@ -206,35 +207,33 @@ class QuestionGameService:
         answer_text: str,
         db: Session
     ) -> Dict[str, Any]:
-        """Submit an answer to the current question"""
-        
-        # Get game
-        game = db.query(MatchQuestionGame).filter(
-            MatchQuestionGame.user_id == user_id,
-            MatchQuestionGame.candidate_id == candidate_id,
-            MatchQuestionGame.is_complete == False
-        ).first()
-        
-        if not game:
-            return {'error': 'No active game found'}
-        
-        # Get the current unanswered question
+        """
+        Submit an answer to the next unanswered question between me and the candidate.
+        The row's user_id is the asker (candidate), candidate_id is the receiver (me).
+        """
         chat_question = db.query(ChatQuestion).filter(
-            ChatQuestion.user_id == user_id,
-            ChatQuestion.candidate_id == candidate_id,
+            ChatQuestion.user_id == candidate_id,
+            ChatQuestion.candidate_id == user_id,
             ChatQuestion.is_answered == False
         ).order_by(ChatQuestion.question_index).first()
-        
+
+        if not chat_question:
+            chat_question = db.query(ChatQuestion).filter(
+                or_(
+                    and_(ChatQuestion.user_id == user_id, ChatQuestion.candidate_id == candidate_id),
+                    and_(ChatQuestion.user_id == candidate_id, ChatQuestion.candidate_id == user_id),
+                ),
+                ChatQuestion.is_answered == False
+            ).order_by(ChatQuestion.question_index).first()
+
         if not chat_question:
             return {'error': 'No active question to answer'}
-        
-        # Save the answer
+
         chat_question.answer_text = answer_text
         chat_question.is_answered = True
         chat_question.answered_at = datetime.utcnow()
         db.commit()
-        
-        # ✅ Always return need_rating immediately after each answer
+
         return {
             'status': 'need_rating',
             'message': 'Answer submitted! Rate it now.',
