@@ -376,3 +376,57 @@ class AuthService:
         
         logger.info(f"✅ User authenticated: {user.id} ({user.email})")
         return user
+    
+    @staticmethod
+    async def login_with_firebase(db: Session, decoded_token: dict, provider: str) -> dict:
+        """Handle login via Firebase (Google or Phone)."""
+        email = decoded_token.get("email")
+        phone = decoded_token.get("phone_number")
+        firebase_uid = decoded_token.get("uid")
+        name = decoded_token.get("name") or ""
+
+        user = None
+        if provider == "google" and email:
+            user = db.query(User).filter(User.email == email).first()
+        elif provider == "phone" and phone:
+            user = db.query(User).filter(User.phone == phone).first()
+
+        if not user:
+            parts = name.strip().split(" ", 1) if name else []
+            first_name = parts[0] if parts else None
+            last_name = parts[1] if len(parts) > 1 else None
+
+            user = User(
+                id=str(uuid.uuid4()),
+                email=email if email else f"{firebase_uid}@firebase.local",
+                phone=phone,
+                password_hash="",
+                first_name=first_name,
+                last_name=last_name,
+                is_active=True,
+                is_verified=True,
+                last_active_at=datetime.utcnow(),
+            )
+            db.add(user)
+            db.flush()
+
+            profile = Profile(user_id=user.id)
+            db.add(profile)
+            db.commit()
+            db.refresh(user)
+        else:
+            user.last_active_at = datetime.utcnow()
+            db.commit()
+
+        access_token = AuthService.create_access_token(str(user.id), user.email or "")
+        refresh_token = AuthService.create_refresh_token(str(user.id))
+
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "user_id": str(user.id),
+            "email": user.email,
+            "subscription_status": user.subscription_status.value,
+            "is_registration_complete": user.is_registration_complete,
+        }    
