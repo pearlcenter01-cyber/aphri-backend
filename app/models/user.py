@@ -90,6 +90,11 @@ class User(Base):
     # CUSTOM QUESTIONS
     # ============================================================
     custom_questions = Column(Text, nullable=True)  # JSON array
+
+    # ============================================================
+    # REGISTRATION STATUS
+    # ============================================================
+    is_registration_complete = Column(Boolean, default=True, nullable=False)   # ← ADDED
     
     # ============================================================
     # SUBSCRIPTION

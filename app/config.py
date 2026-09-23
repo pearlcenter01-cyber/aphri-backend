@@ -17,6 +17,7 @@ class Settings:
     SECRET_KEY: str = os.getenv("SECRET_KEY", "change-this-in-production")
     BASE_URL: str = os.getenv("BASE_URL", "http://localhost:8000")
     DATA_DIR: str = os.getenv("DATA_DIR", "./data")
+    FIREBASE_SERVICE_ACCOUNT: str = os.getenv("FIREBASE_SERVICE_ACCOUNT", "./firebase-service-account.json")
     
     # ============================================================
     # DATABASE

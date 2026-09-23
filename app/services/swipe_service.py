@@ -259,8 +259,14 @@ class SwipeService:
             return []
         
         # Only for serious users
+                # Only for serious users
         if user.looking_for != "Serious Relationship":
             print(f"🔍 User is not serious: {user.looking_for}")
+            return []
+
+        # ← ADDED: pending users cannot browse matches
+        if not user.is_registration_complete:
+            print(f"🔍 User is pending registration — no matches")
             return []
         
         print(f"🔍 User looking_for: {user.looking_for}")
@@ -277,7 +283,8 @@ class SwipeService:
             User.id != user_id,
             User.is_active == True,
             User.subscription_status != "expired",
-            User.looking_for == "Serious Relationship"
+            User.looking_for == "Serious Relationship",
+            User.is_registration_complete == True,      # ← ADDED
         )
         
         print(f"🔍 Before filters: {query.count()} users found")

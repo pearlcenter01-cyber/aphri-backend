@@ -3,6 +3,8 @@ from typing import Optional, List
 from datetime import datetime
 
 class ProfileUpdate(BaseModel):
+    custom_questions: Optional[str] = None
+    is_registration_complete: Optional[bool] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     date_of_birth: Optional[datetime] = None
@@ -44,3 +46,4 @@ class ProfileResponse(BaseModel):
     completeness_score: int
     created_at: datetime
     updated_at: datetime
+    is_registration_complete: bool

@@ -70,6 +70,11 @@ class UserRegister(BaseModel):
     q7_crisis_response: Optional[str] = None
     q8_emotional_maturity: Optional[str] = None
 
+    # ============================================================
+    # 🆕 REGISTRATION STATUS
+    # ============================================================
+    is_registration_complete: Optional[bool] = True     # ← ADDED
+
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -83,6 +88,7 @@ class TokenResponse(BaseModel):
     user_id: str
     email: str
     subscription_status: str
+    is_registration_complete: bool = True 
 
 
 class RefreshToken(BaseModel):

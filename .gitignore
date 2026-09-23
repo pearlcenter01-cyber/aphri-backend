@@ -90,3 +90,9 @@ desktop.ini
 # Render / Deployment
 # ============================================================
 # render.yaml is committed on purpose (do not ignore)
+
+# ============================================================
+# Firebase
+# ============================================================
+firebase-service-account.json
+firebase-service-account.json.json

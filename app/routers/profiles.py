@@ -107,6 +107,7 @@ async def get_my_profile(
                 "religion": profile.religion if profile else None,
                 "zodiac": profile.zodiac if profile else None,
                 "completeness_score": profile.completeness_score if profile else 0,
+                "is_registration_complete": current_user.is_registration_complete,
             }
         }
     except Exception as e:
@@ -126,7 +127,17 @@ async def update_profile(
     Update current user's profile
     """
     # Update user fields
+        
+    if profile_data.custom_questions is not None:
+        current_user.custom_questions = profile_data.custom_questions
+    if profile_data.is_registration_complete is not None:
+        current_user.is_registration_complete = profile_data.is_registration_complete
+    if profile_data.custom_questions is not None or profile_data.is_registration_complete is not None:
+        db.commit()
+
     user_update = {}
+
+    
     if profile_data.first_name is not None:
         user_update["first_name"] = profile_data.first_name
     if profile_data.last_name is not None:
@@ -145,6 +156,8 @@ async def update_profile(
     profile_update.pop("last_name", None)
     profile_update.pop("date_of_birth", None)
     profile_update.pop("gender", None)
+    profile_update.pop("custom_questions", None)
+    profile_update.pop("is_registration_complete", None)
     
     if profile_update:
         ProfileService.create_or_update_profile(db, current_user.id, profile_update)

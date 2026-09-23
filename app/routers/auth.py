@@ -8,6 +8,11 @@ from app.services.auth_service import AuthService
 from app.services.user_service import UserService
 from app.models.user import User  # ✅ ADD THIS
 from app.dependencies import get_current_user  # ✅ ADD THIS
+from app.services.firebase_service import FirebaseService
+from pydantic import BaseModel
+
+class FirebaseTokenRequest(BaseModel):
+    id_token: str
 
 router = APIRouter()
 
@@ -105,3 +110,22 @@ async def reset_password(
         )
     
     return {"message": "Password reset email sent"}
+
+@router.post("/google", response_model=TokenResponse)
+async def login_with_google(
+    body: FirebaseTokenRequest,
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """Verify a Firebase Google ID token and return app JWTs."""
+    decoded = FirebaseService.verify_id_token(body.id_token)
+    return await AuthService.login_with_firebase(db, decoded, provider="google")
+
+
+@router.post("/phone/verify", response_model=TokenResponse)
+async def login_with_phone(
+    body: FirebaseTokenRequest,
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """Verify a Firebase Phone ID token and return app JWTs."""
+    decoded = FirebaseService.verify_id_token(body.id_token)
+    return await AuthService.login_with_firebase(db, decoded, provider="phone")    

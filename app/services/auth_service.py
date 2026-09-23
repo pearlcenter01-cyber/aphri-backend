@@ -158,7 +158,7 @@ class AuthService:
             q6_religion=user_data.q6_religion,
             q7_crisis_response=user_data.q7_crisis_response,
             q8_emotional_maturity=user_data.q8_emotional_maturity,
-            
+            is_registration_complete=user_data.is_registration_complete,
             photo_reveal_date=datetime.utcnow() + timedelta(hours=24),
             subscription_status=UserStatus.FREE,
         )
@@ -173,54 +173,55 @@ class AuthService:
         db.refresh(new_user)
 
         # ✅ Auto-create matches with 50%+ compatible users
-        try:
-            from app.services.swipe_service import SwipeService
-            from app.models.match import Match
-            from sqlalchemy import or_, and_
-            
-            # ✅ Get all serious users (excluding self)
-            other_users = db.query(User).filter(
-                User.id != new_user.id,
-                User.is_active == True,
-                User.looking_for == "Serious Relationship"
-            ).all()
-            
-            print(f"🔍 Checking {len(other_users)} other serious users for matches with {new_user.email}")
-            
-            for other in other_users:
-                # ✅ Calculate compatibility directly
-                result = SwipeService.calculate_compatibility(new_user, other)
-                score = result['score']
+        if user_data.is_registration_complete:                            # ← ADDED
+            try:
+                from app.services.swipe_service import SwipeService
+                from app.models.match import Match
+                from sqlalchemy import or_, and_
                 
-                print(f"   📊 {new_user.email} vs {other.email}: {score}%")
+                # ✅ Get all serious users (excluding self)
+                other_users = db.query(User).filter(
+                    User.id != new_user.id,
+                    User.is_active == True,
+                    User.looking_for == "Serious Relationship"
+                ).all()
                 
-                if score >= 50:
-                    # Check if match already exists
-                    existing = db.query(Match).filter(
-                        or_(
-                            and_(Match.user_1_id == new_user.id, Match.user_2_id == other.id),
-                            and_(Match.user_1_id == other.id, Match.user_2_id == new_user.id)
-                        )
-                    ).first()
-                    if not existing:
-                        new_match = Match(
-                            id=str(uuid.uuid4()),
-                            user_1_id=new_user.id,
-                            user_2_id=other.id,
-                            user_1_swiped_at=datetime.utcnow(),
-                            user_2_swiped_at=datetime.utcnow(),
-                            matched_at=datetime.utcnow(),
-                            is_active=True
-                        )
-                        db.add(new_match)
-                        print(f"   ✅ Created match between {new_user.email} and {other.email} ({score}%)")
-            db.commit()
-        except Exception as e:
-            logger.error(f"❌ Error auto-creating matches: {e}")
-            import traceback
-            traceback.print_exc()
-            # Don't fail registration if match creation fails
-            pass
+                print(f"🔍 Checking {len(other_users)} other serious users for matches with {new_user.email}")
+                
+                for other in other_users:
+                    # ✅ Calculate compatibility directly
+                    result = SwipeService.calculate_compatibility(new_user, other)
+                    score = result['score']
+                    
+                    print(f"   📊 {new_user.email} vs {other.email}: {score}%")
+                    
+                    if score >= 50:
+                        # Check if match already exists
+                        existing = db.query(Match).filter(
+                            or_(
+                                and_(Match.user_1_id == new_user.id, Match.user_2_id == other.id),
+                                and_(Match.user_1_id == other.id, Match.user_2_id == new_user.id)
+                            )
+                        ).first()
+                        if not existing:
+                            new_match = Match(
+                                id=str(uuid.uuid4()),
+                                user_1_id=new_user.id,
+                                user_2_id=other.id,
+                                user_1_swiped_at=datetime.utcnow(),
+                                user_2_swiped_at=datetime.utcnow(),
+                                matched_at=datetime.utcnow(),
+                                is_active=True
+                            )
+                            db.add(new_match)
+                            print(f"   ✅ Created match between {new_user.email} and {other.email} ({score}%)")
+                db.commit()
+            except Exception as e:
+                logger.error(f"❌ Error auto-creating matches: {e}")
+                import traceback
+                traceback.print_exc()
+                # Don't fail registration if match creation fails
+                pass
         
         # Generate tokens
         access_token = AuthService.create_access_token(str(new_user.id), new_user.email)
@@ -232,7 +233,8 @@ class AuthService:
             "token_type": "bearer",
             "user_id": str(new_user.id),
             "email": new_user.email,
-            "subscription_status": new_user.subscription_status.value
+            "subscription_status": new_user.subscription_status.value,
+            "is_registration_complete": new_user.is_registration_complete
         }
     
     @staticmethod
@@ -313,7 +315,9 @@ class AuthService:
             "token_type": "bearer",
             "user_id": str(user.id),
             "email": user.email,
-            "subscription_status": user.subscription_status.value
+            "subscription_status": user.subscription_status.value,
+            "is_registration_complete": user.is_registration_complete
+
         }
     
     @staticmethod

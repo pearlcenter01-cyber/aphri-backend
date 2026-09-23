@@ -76,5 +76,12 @@ class Profile(Base):
     # ============================================================
     user = relationship("User", back_populates="profile")
     
+    # ============================================================
+    # COMPUTED PROPERTIES
+    # ============================================================
+    @property
+    def is_registration_complete(self):        # ← ADDED
+        return self.user.is_registration_complete if self.user else True
+    
     def __repr__(self):
         return f"<Profile user_id={self.user_id}>"
