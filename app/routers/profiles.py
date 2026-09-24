@@ -126,44 +126,42 @@ async def update_profile(
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
-    Update current user's profile
+    Update current user's profile and/or user fields.
     """
-    # Update user fields
-        
-    if profile_data.custom_questions is not None:
-        current_user.custom_questions = profile_data.custom_questions
-    if profile_data.is_registration_complete is not None:
-        current_user.is_registration_complete = profile_data.is_registration_complete
-    if profile_data.custom_questions is not None or profile_data.is_registration_complete is not None:
+    # Fields that live on the User model
+    user_fields = [
+        "first_name", "last_name", "date_of_birth", "gender",
+        "looking_for", "looking_for_gender",
+        "looking_for_age_min", "looking_for_age_max",
+        "vibe", "vibe_subcategories",
+        "city", "latitude", "longitude",
+        "religion", "religion_preferences",
+        "is_single_parent", "is_divorced",
+        "open_to_single_parent", "open_to_divorced", "open_to_never_married",
+        "q1_core_need", "q2_sex_intimacy", "q3_conflict", "q4_success_response",
+        "q5_gender_roles", "q6_religion", "q7_crisis_response", "q8_emotional_maturity",
+        "custom_questions", "is_registration_complete",
+    ]
+
+    user_updated = False
+    for field in user_fields:
+        value = getattr(profile_data, field, None)
+        if value is not None:
+            setattr(current_user, field, value)
+            user_updated = True
+
+    if user_updated:
         db.commit()
+        db.refresh(current_user)
 
-    user_update = {}
-
-    
-    if profile_data.first_name is not None:
-        user_update["first_name"] = profile_data.first_name
-    if profile_data.last_name is not None:
-        user_update["last_name"] = profile_data.last_name
-    if profile_data.date_of_birth is not None:
-        user_update["date_of_birth"] = profile_data.date_of_birth
-    if profile_data.gender is not None:
-        user_update["gender"] = profile_data.gender
-    
-    if user_update:
-        UserService.update_user(db, current_user, user_update)
-    
-    # Update profile fields
+    # Remaining fields go to the profile table
     profile_update = profile_data.dict(exclude_none=True)
-    profile_update.pop("first_name", None)
-    profile_update.pop("last_name", None)
-    profile_update.pop("date_of_birth", None)
-    profile_update.pop("gender", None)
-    profile_update.pop("custom_questions", None)
-    profile_update.pop("is_registration_complete", None)
-    
+    for field in user_fields:
+        profile_update.pop(field, None)
+
     if profile_update:
         ProfileService.create_or_update_profile(db, current_user.id, profile_update)
-    
+
     return {"message": "Profile updated successfully"}
 
 @router.get("/{user_id}")
