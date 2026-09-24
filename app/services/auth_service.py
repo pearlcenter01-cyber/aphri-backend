@@ -401,11 +401,6 @@ class AuthService:
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="No account found. Please sign up first."
                 )
-            if not user.is_registration_complete:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Your account is not fully set up. Please finish registration."
-                )
         elif mode == "signup":
             if user:
                 raise HTTPException(
