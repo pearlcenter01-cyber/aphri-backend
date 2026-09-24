@@ -76,6 +76,8 @@ async def get_my_profile(
                 "is_verified": current_user.is_verified,
                 "is_online": current_user.is_online,
                 "last_active_at": current_user.last_active_at.isoformat() if current_user.last_active_at else None,
+                "has_compatibility_answers": bool(current_user.q1_core_need),
+                "is_firebase_user": not bool(current_user.password_hash),
             },
             "profile": {
                 "id": str(profile.id) if profile else None,
