@@ -378,8 +378,12 @@ class AuthService:
         return user
     
     @staticmethod
-    async def login_with_firebase(db: Session, decoded_token: dict, provider: str) -> dict:
-        """Handle login via Firebase (Google or Phone)."""
+    async def login_with_firebase(db: Session, decoded_token: dict, provider: str, mode: str = "login") -> dict:
+        """
+        Handle authentication via Firebase (Google or Phone).
+        mode = 'login'  → only existing users; reject unknown with 404
+        mode = 'signup' → create new user if not found; reject if already exists with 409
+        """
         email = decoded_token.get("email")
         phone = decoded_token.get("phone_number")
         firebase_uid = decoded_token.get("uid")
@@ -391,10 +395,50 @@ class AuthService:
         elif provider == "phone" and phone:
             user = db.query(User).filter(User.phone == phone).first()
 
-        if not user:
+        if mode == "login":
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="No account found. Please sign up first."
+                )
+            if not user.is_registration_complete:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Your account is not fully set up. Please finish registration."
+                )
+        elif mode == "signup":
+            if user:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="An account with this email/phone already exists. Please log in instead."
+                )
+            parts = name.strip().split(" ", 1) if name else []
+            first_name = parts[0] if parts else None
+            last_name = parts[1] if len(parts) > 1 else None
+
+            user = User(
+                id=str(uuid.uuid4()),
+                email=email if email else f"{firebase_uid}@firebase.local",
+                phone=phone,
+                password_hash="",
+                first_name=first_name,
+                last_name=last_name,
+                is_active=True,
+                is_verified=True,
+                is_registration_complete=False,
+                last_active_at=datetime.utcnow(),
+            )
+            db.add(user)
+            db.flush()
+
+            profile = Profile(user_id=user.id)
+            db.add(profile)
+            db.commit()
+            db.refresh(user)
+        else:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No account found. Please sign up first."
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid mode. Use 'login' or 'signup'."
             )
 
         user.last_active_at = datetime.utcnow()
@@ -411,4 +455,4 @@ class AuthService:
             "email": user.email,
             "subscription_status": user.subscription_status.value,
             "is_registration_complete": user.is_registration_complete,
-        }    
+        }

@@ -93,3 +93,7 @@ class TokenResponse(BaseModel):
 
 class RefreshToken(BaseModel):
     refresh_token: str
+
+class FirebaseTokenRequest(BaseModel):
+    id_token: str
+    mode: Optional[str] = "login"
