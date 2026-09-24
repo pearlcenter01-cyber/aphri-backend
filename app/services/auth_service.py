@@ -392,31 +392,13 @@ class AuthService:
             user = db.query(User).filter(User.phone == phone).first()
 
         if not user:
-            parts = name.strip().split(" ", 1) if name else []
-            first_name = parts[0] if parts else None
-            last_name = parts[1] if len(parts) > 1 else None
-
-            user = User(
-                id=str(uuid.uuid4()),
-                email=email if email else f"{firebase_uid}@firebase.local",
-                phone=phone,
-                password_hash="",
-                first_name=first_name,
-                last_name=last_name,
-                is_active=True,
-                is_verified=True,
-                last_active_at=datetime.utcnow(),
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No account found. Please sign up first."
             )
-            db.add(user)
-            db.flush()
 
-            profile = Profile(user_id=user.id)
-            db.add(profile)
-            db.commit()
-            db.refresh(user)
-        else:
-            user.last_active_at = datetime.utcnow()
-            db.commit()
+        user.last_active_at = datetime.utcnow()
+        db.commit()
 
         access_token = AuthService.create_access_token(str(user.id), user.email or "")
         refresh_token = AuthService.create_refresh_token(str(user.id))
