@@ -49,10 +49,13 @@ class PaymentService:
         user_id: str,
         plan_type: str,
         email: str,
-        currency: str = "ETB", 
         first_name: Optional[str] = None,
         last_name: Optional[str] = None,
+        *,
+        currency: str = "ETB",
     ) -> Dict[str, Any]:
+
+
         """Initialize a payment with Chapa"""
         plan = PaymentService.get_plan_details(plan_type)
 

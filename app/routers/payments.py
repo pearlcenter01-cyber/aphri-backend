@@ -29,15 +29,14 @@ async def initiate_payment(
 
     - **plan_type**: "monthly", "quarterly", or "yearly"
     """
-    return await PaymentService.initialize_payment(
-        db,
-        current_user.id,
-        payment_data.plan_type,
-        current_user.email,
-        current_user.first_name,
-        current_user.last_name
+        return await PaymentService.initialize_payment(
+        db=db,
+        user_id=current_user.id,
+        plan_type=payment_data.plan_type,
+        email=current_user.email,
+        first_name=current_user.first_name,
+        last_name=current_user.last_name,
     )
-
 @router.get("/verify")
 async def verify_payment(
     tx_ref: str = "",
