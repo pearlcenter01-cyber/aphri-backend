@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app.database import get_db
 from app.models.user import User
@@ -299,3 +299,66 @@ async def get_photo_reveal_status(
         "time_remaining_minutes": time_remaining,
         "message": "Your photos are revealed!" if is_revealed else f"Your photos will be revealed in {time_remaining} minutes"
     }
+
+# ============================================================
+# DELETE ACCOUNT
+# ============================================================
+@router.delete("/me")
+async def delete_my_account(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> Dict[str, Any]:
+    """
+    Permanently delete the current user's account and all related data.
+    """
+    from app.models.match import Match
+    from app.models.message import Message
+    from app.models.swipe import Swipe
+    from app.models.chat_question import ChatQuestion
+    from app.models.match_question_game import MatchQuestionGame
+    from app.models.real_match import RealMatch
+
+    user_id = current_user.id
+
+    # Delete messages involving this user
+    db.query(Message).filter(
+        (Message.sender_id == user_id) | (Message.receiver_id == user_id)
+    ).delete(synchronize_session=False)
+
+    # Delete chat questions
+    db.query(ChatQuestion).filter(
+        (ChatQuestion.user_id == user_id) | (ChatQuestion.candidate_id == user_id)
+    ).delete(synchronize_session=False)
+
+    # Delete game records
+    db.query(MatchQuestionGame).filter(
+        (MatchQuestionGame.user_id == user_id) | (MatchQuestionGame.candidate_id == user_id)
+    ).delete(synchronize_session=False)
+
+    # Delete real match records
+    db.query(RealMatch).filter(
+        (RealMatch.user_id == user_id) | (RealMatch.matched_user_id == user_id)
+    ).delete(synchronize_session=False)
+
+    # Delete swipes
+    db.query(Swipe).filter(
+        (Swipe.swiper_id == user_id) | (Swipe.swiped_id == user_id)
+    ).delete(synchronize_session=False)
+
+    # Delete matches
+    db.query(Match).filter(
+        (Match.user_1_id == user_id) | (Match.user_2_id == user_id)
+    ).delete(synchronize_session=False)
+
+    # Delete photos
+    db.query(Photo).filter(Photo.user_id == user_id).delete(synchronize_session=False)
+
+    # Delete profile
+    db.query(Profile).filter(Profile.user_id == user_id).delete(synchronize_session=False)
+
+    # Delete the user
+    db.delete(current_user)
+
+    db.commit()
+
+    return {"message": "Account permanently deleted."}

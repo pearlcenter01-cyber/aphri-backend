@@ -49,6 +49,7 @@ class PaymentService:
         user_id: str,
         plan_type: str,
         email: str,
+        currency: str = "ETB", 
         first_name: Optional[str] = None,
         last_name: Optional[str] = None,
     ) -> Dict[str, Any]:
@@ -73,6 +74,7 @@ class PaymentService:
             payload = {
                 "email": email,
                 "amount": str(plan["price"]),
+                "currency": currency,
                 "first_name": first_name or "User",
                 "last_name": last_name or "",
                 "tx_ref": tx_ref,

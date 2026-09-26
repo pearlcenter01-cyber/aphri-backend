@@ -84,6 +84,7 @@ class Settings:
     PLANS = {
         "starter": {
             "price": 300,
+            "usd_display": 2.30,
             "name": "Starter",
             "duration_days": 30,
             "credits": 300,
@@ -91,6 +92,7 @@ class Settings:
         },
         "standard": {
             "price": 500,
+            "usd_display": 3.85,
             "name": "Standard",
             "duration_days": 30,
             "credits": 500,
@@ -98,6 +100,7 @@ class Settings:
         },
         "premium": {
             "price": 1500,
+            "usd_display": 11.50,
             "name": "Premium",
             "duration_days": 180,
             "credits": -1,  # -1 = unlimited

@@ -94,7 +94,12 @@ class User(Base):
     # ============================================================
     # REGISTRATION STATUS
     # ============================================================
-    is_registration_complete = Column(Boolean, default=True, nullable=False)   # ← ADDED
+    is_registration_complete = Column(Boolean, default=True, nullable=False)
+
+    # ============================================================
+    # ACCOUNT DELETION (soft delete)
+    # ============================================================
+    deleted_at = Column(DateTime, nullable=True)
     
     # ============================================================
     # SUBSCRIPTION
