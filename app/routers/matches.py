@@ -799,30 +799,33 @@ async def get_game_questions(
                             "is_answer_event": True,
                         })
 
-            # --- My question to the candidate ---
+             # --- My question to the candidate ---
+            # Only reveal my outgoing question once the candidate has answered it.
             if idx < len(my_questions):
                 if is_released(user_uuid_str, candidate_uuid_str, idx):
                     row = row_for(user_uuid_str, candidate_uuid_str, idx)
-                    base_id = row.id if row else f"pending_{user_uuid_str}_{idx}"
 
-                    # Question event (sender = me, the asker)
-                    timeline.append({
-                        "id": f"q_{base_id}",
-                        "db_id": row.id if row else None,
-                        "user_id": user_uuid_str,
-                        "candidate_id": candidate_uuid_str,
-                        "question_index": idx,
-                        "question_text": my_questions[idx],
-                        "answer_text": None,
-                        "rating": None,
-                        "is_answered": row.is_answered if row else False,
-                        "created_at": row.created_at.isoformat() if row else datetime.utcnow().isoformat(),
-                        "answered_at": None,
-                        "is_answer_event": False,
-                    })
-
-                    # Answer event (sender = candidate, the answerer)
+                    # Show only when answered
                     if row and row.is_answered and row.answer_text:
+                        base_id = row.id
+
+                        # Question event (sender = me, the asker)
+                        timeline.append({
+                            "id": f"q_{base_id}",
+                            "db_id": row.id,
+                            "user_id": user_uuid_str,
+                            "candidate_id": candidate_uuid_str,
+                            "question_index": idx,
+                            "question_text": my_questions[idx],
+                            "answer_text": None,
+                            "rating": None,
+                            "is_answered": True,
+                            "created_at": row.created_at.isoformat(),
+                            "answered_at": None,
+                            "is_answer_event": False,
+                        })
+
+                        # Answer event (sender = candidate, the answerer)
                         timeline.append({
                             "id": f"a_{base_id}",
                             "db_id": row.id,
