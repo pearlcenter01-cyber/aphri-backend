@@ -29,7 +29,7 @@ async def initiate_payment(
 
     - **plan_type**: "monthly", "quarterly", or "yearly"
     """
-        return await PaymentService.initialize_payment(
+    return await PaymentService.initialize_payment(
         db=db,
         user_id=current_user.id,
         plan_type=payment_data.plan_type,
