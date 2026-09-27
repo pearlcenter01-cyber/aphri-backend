@@ -105,7 +105,10 @@ async def respond_compatibility(
     
     session = db.query(CompatibilitySession).filter(
         CompatibilitySession.id == session_id,
-        CompatibilitySession.partner_id == current_user.id
+        or_(
+            CompatibilitySession.user_id == current_user.id,
+            CompatibilitySession.partner_id == current_user.id,
+        )
     ).first()
     
     if not session:
@@ -113,6 +116,14 @@ async def respond_compatibility(
         raise HTTPException(status_code=404, detail="Session not found")
     
     print(f"🔴 Session found: {session.id}, status: {session.status}")
+
+    if session.status != "pending":
+        print(f"🔴 Session already responded, status: {session.status}")
+        return {
+            "message": "Request already handled",
+            "session_id": session.id,
+            "status": session.status,
+        }
     
     if not agree:
         session.status = "declined"

@@ -327,6 +327,7 @@ class QuestionGameService:
         
         # If all 3 are answered and rated, calculate final score
         if len(answered) >= 3 and len(rated) >= 3:
+            
             return QuestionGameService._calculate_final_score(game, db)
         
         # Get next unanswered question
@@ -407,15 +408,17 @@ class QuestionGameService:
         compatibility = SwipeService.calculate_compatibility(user, candidate)
         eight_q_score = compatibility['score']
         
-        # Get all chat questions with ratings
+        # Get all chat questions with ratings — both directions
         chat_questions = db.query(ChatQuestion).filter(
-            ChatQuestion.user_id == game.user_id,
-            ChatQuestion.candidate_id == game.candidate_id
+            or_(
+                and_(ChatQuestion.user_id == game.user_id, ChatQuestion.candidate_id == game.candidate_id),
+                and_(ChatQuestion.user_id == game.candidate_id, ChatQuestion.candidate_id == game.user_id),
+            )
         ).order_by(ChatQuestion.question_index).all()
         
         ratings = [q.rating for q in chat_questions if q.rating]
         
-        if len(ratings) < 3:
+        if len(ratings) < 6:
             return {'error': 'Not all questions rated yet'}
         
         # Calculate custom score (1-5 -> 0-100)
@@ -467,7 +470,8 @@ class QuestionGameService:
                 'is_match': True,
                 'real_matches_count': real_matches_count,
                 'message': f'🎉 Match! You and {candidate.full_name} are now a real match!',
-                'candidate_name': candidate.full_name
+                'candidate_name': candidate.full_name,
+                'candidate_id': game.candidate_id
             }
         else:
             return {
@@ -475,7 +479,8 @@ class QuestionGameService:
                 'final_score': final_score,
                 'is_match': False,
                 'real_matches_count': real_matches_count,
-                'message': f'Score: {int(final_score)}%. Not quite a match. Keep going!'
+                'message': f'Score: {int(final_score)}%. Not quite a match. Keep going!',
+                'candidate_id': game.candidate_id
             }
     
     @staticmethod

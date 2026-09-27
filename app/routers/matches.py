@@ -563,14 +563,17 @@ async def rate_single_answer(
         db.commit()
         
         all_questions = db.query(ChatQuestion).filter(
-            ChatQuestion.user_id == question.user_id,
-            ChatQuestion.candidate_id == question.candidate_id
+            or_(
+                and_(ChatQuestion.user_id == question.user_id, ChatQuestion.candidate_id == question.candidate_id),
+                and_(ChatQuestion.user_id == question.candidate_id, ChatQuestion.candidate_id == question.user_id),
+            )
         ).all()
 
         rated = [q for q in all_questions if q.is_answered and q.rating]
 
-        # ✅ If all 3 are rated, compute the final score (create game row if needed)
-        if len(rated) >= 3:
+        # ✅ Both sides must be fully answered and rated: 6 rows (3 per direction)
+        if len(rated) >= 6:
+
             game = db.query(MatchQuestionGame).filter(
                 MatchQuestionGame.user_id == question.user_id,
                 MatchQuestionGame.candidate_id == question.candidate_id,
