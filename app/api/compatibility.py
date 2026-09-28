@@ -624,8 +624,19 @@ async def submit_compatibility_answers(
         print(f"🔴 Partner answers: {len(partner_answers)}")
         
         # Analyze with AI
+        user_obj = db.query(User).filter(User.id == session.user_id).first()
+        partner_obj = db.query(User).filter(User.id == session.partner_id).first()
+        person1_name = user_obj.first_name if user_obj else "You"
+        person2_name = partner_obj.first_name if partner_obj else "Your partner"
+
         print("🔴 Calling AI for analysis...")
-        report = AIService.analyze_compatibility(user_answers, partner_answers, language=language)
+        report = AIService.analyze_compatibility(
+            user_answers,
+            partner_answers,
+            person1_name=person1_name,
+            person2_name=person2_name,
+            language=language,
+        )
         print(f"🔴 Analysis complete! Score: {report.get('score', 'N/A')}")
         
         session.status = "complete"
