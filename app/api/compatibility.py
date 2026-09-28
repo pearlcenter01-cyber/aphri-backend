@@ -74,10 +74,16 @@ async def request_compatibility(
     
     print(f"🔴 New session created: {session.id}")
     
+    my_responses = db.query(CompatibilityResponse).filter(
+        CompatibilityResponse.session_id == session.id,
+        CompatibilityResponse.user_id == current_user.id,
+    ).all()
+    my_answers = {r.question_id: r.response_text for r in my_responses}
+
     return {
-        "message": "Compatibility request sent",
         "session_id": session.id,
-        "status": session.status
+        "questions": result,
+        "my_answers": my_answers,
     }
 
 @router.post("/request/respond")
@@ -409,7 +415,7 @@ async def get_compatibility_questions(
     ).order_by(CompatibilityQuestion.question_index).all()
 
     # ✅ Self-heal: if both agreed but no questions, generate them now
-    if not questions and session.status in ("both_agreed", "answering"):
+    if not questions and session.status in ("pending", "both_agreed", "answering"):
         print("🔴 No questions found — generating in English...")
 
         # ✅ FIX 1 + FIX 2: wipe old responses and reset session state
