@@ -94,7 +94,7 @@ async def respond_compatibility(
     
     session_id = request.get("session_id")
     agree = request.get("agree", False)
-    language = "en"
+    language = request.get("language") or "en"
     print(f"🔴 LANGUAGE FROM REQUEST: {language!r}")
     
     print(f"🔴 session_id: {session_id}")
@@ -209,110 +209,8 @@ async def respond_compatibility(
         print(f"❌❌❌ ERROR generating questions: {e}")
         import traceback
         traceback.print_exc()
-        # Fallback questions with options
-        questions = [
-            {
-                "question": "When your partner expresses a need that conflicts with your own, what do you typically do?",
-                "options": [
-                    "I prioritize my partner's need and sacrifice my own",
-                    "I express my need and work toward a compromise",
-                    "I withdraw and hope the conflict resolves itself",
-                    "I assert my need and expect my partner to accommodate"
-                ],
-                "method": "Gottman Method"
-            },
-            {
-                "question": "What does commitment mean to you in a relationship?",
-                "options": [
-                    "Staying together through all challenges, regardless of personal cost",
-                    "Choosing each other daily, with the freedom to leave",
-                    "Building a life together while maintaining individual independence",
-                    "A sacred bond that requires sacrifice and compromise"
-                ],
-                "method": "Gottman Method"
-            },
-            {
-                "question": "How do you typically respond when you feel emotionally hurt by your partner?",
-                "options": [
-                    "I withdraw to process my feelings alone",
-                    "I confront them immediately and express my hurt",
-                    "I reflect on whether my reaction is justified before responding",
-                    "I become distant and wait for them to notice"
-                ],
-                "method": "Gottman Method"
-            },
-            {
-                "question": "What makes you feel most emotionally secure in a relationship?",
-                "options": [
-                    "Consistent reassurance and validation from my partner",
-                    "Knowing we can be independent without losing connection",
-                    "Feeling understood even when we disagree",
-                    "Physical presence and affection on a regular basis"
-                ],
-                "method": "Attachment Theory"
-            },
-            {
-                "question": "When you're stressed or anxious, what do you need most from a partner?",
-                "options": [
-                    "Space to process my emotions on my own",
-                    "Active listening and emotional support",
-                    "Practical help to solve the problem",
-                    "Physical comfort and closeness"
-                ],
-                "method": "Attachment Theory"
-            },
-            {
-                "question": "How do you express love most naturally?",
-                "options": [
-                    "Through words of affirmation and encouragement",
-                    "Through acts of service and practical help",
-                    "Through quality time and undivided attention",
-                    "Through physical touch and intimacy"
-                ],
-                "method": "Attachment Theory"
-            },
-            {
-                "question": "When you face a major life decision, how do you approach it?",
-                "options": [
-                    "I analyze all options carefully before deciding",
-                    "I trust my intuition and go with my gut feeling",
-                    "I seek input from trusted people before deciding",
-                    "I take time to reflect and decide when I feel ready"
-                ],
-                "method": "Big Five"
-            },
-            {
-                "question": "How important is personal growth to you in a relationship?",
-                "options": [
-                    "Essential - we should grow together and support each other",
-                    "Important, but not at the expense of the relationship",
-                    "Secondary - stability and comfort matter more",
-                    "I believe growth is an individual journey, not a shared one"
-                ],
-                "method": "Big Five"
-            },
-            {
-                "question": "How do you typically handle disagreements about finances or lifestyle?",
-                "options": [
-                    "I advocate for my perspective and seek compromise",
-                    "I defer to my partner's judgment to avoid conflict",
-                    "I suggest we seek professional advice or external input",
-                    "I maintain my position and hope we can agree over time"
-                ],
-                "method": "Big Five"
-            },
-            {
-                "question": "What role does physical intimacy play in your ideal relationship?",
-                "options": [
-                    "A central pillar - essential for emotional connection",
-                    "Important, but emotional intimacy matters more",
-                    "Secondary - it comes and goes with life circumstances",
-                    "Desirable, but not necessary for a deep connection"
-                ],
-                "method": "Big Five"
-            }
-        ]
-        print(f"🔴 Using fallback questions: {len(questions)} questions")
+   
+        raise HTTPException(status_code=500, detail="Failed to load compatibility questions")
 
     # Hard cap: never store more than 5 questions
     questions = questions[:5]
@@ -327,25 +225,16 @@ async def respond_compatibility(
     # Save questions to database
     print("🔴 Saving questions to database...")
     for idx, q in enumerate(questions):
-
-
-        # Extract question text and options
-        question_text = q.get('question', '') if isinstance(q, dict) else q
-        options = q.get('options', []) if isinstance(q, dict) else []
-        method = q.get('method', 'General') if isinstance(q, dict) else 'General'
-        
-        # Store options as JSON string
-        options_json = json.dumps(options) if options else None
-        
-        question = CompatibilityQuestion(
+        db.add(CompatibilityQuestion(
             id=str(uuid4()).replace('-', ''),
             session_id=session.id,
-            question_text=question_text,
-            options=options_json,  # Store options as JSON
-            category=method,
-            question_index=idx
-        )
-        db.add(question)
+            question_text=q.get('question', ''),
+            question_text_am=q.get('question_am', ''),
+            options=json.dumps(q.get('options', [])) or None,
+            options_am=json.dumps(q.get('options_am', [])) or None,
+            category=q.get('method', 'General'),
+            question_index=idx,
+        ))
         
         print(f"🔴 Saved question {idx+1}: {question_text[:50]}... ({len(options)} options, {method})")
     
@@ -362,6 +251,7 @@ async def respond_compatibility(
 @router.get("/questions/{session_id}")
 async def get_compatibility_questions(
     session_id: str,
+    language: str = "en",
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -429,7 +319,7 @@ async def get_compatibility_questions(
             generated = AIService.generate_compatibility_questions(
                 user_profile,
                 partner_profile,
-                language="en",
+                language=language,
                 session_id=session.id,
             )[:5]
 
@@ -440,21 +330,14 @@ async def get_compatibility_questions(
             generated = []
 
         for idx, q in enumerate(generated):
-            if isinstance(q, dict):
-                question_text = q.get("question", "")
-                options = q.get("options", [])
-                method = q.get("method", "General")
-            else:
-                question_text = str(q)
-                options = []
-                method = "General"
-
             db.add(CompatibilityQuestion(
                 id=str(uuid4()).replace("-", ""),
                 session_id=session.id,
-                question_text=question_text,
-                options=json.dumps(options) if options else None,
-                category=method,
+                question_text=q.get("question", ""),
+                question_text_am=q.get("question_am", ""),
+                options=json.dumps(q.get("options", [])) or None,
+                options_am=json.dumps(q.get("options_am", [])) or None,
+                category=q.get("method", "General"),
                 question_index=idx,
             ))
 
@@ -467,10 +350,20 @@ async def get_compatibility_questions(
 
     print(f"🔴 Found {len(questions)} questions")
 
+    use_am = (language == "am")
+
     result = []
     for q in questions:
+        text = (q.question_text_am or q.question_text) if use_am else q.question_text
+        options_raw = q.options_am if use_am else q.options
+
         options = []
-        if q.options:
+        if options_raw:
+            try:
+                options = json.loads(options_raw)
+            except:
+                options = []
+        if not options and q.options:
             try:
                 options = json.loads(q.options)
             except:
@@ -478,7 +371,7 @@ async def get_compatibility_questions(
 
         result.append({
             "id": q.id,
-            "text": q.question_text,
+            "text": text,
             "options": options,
             "method": q.category or "General"
         })
@@ -509,7 +402,7 @@ async def submit_compatibility_answers(
     
     session_id = request.get("session_id")
     answers = request.get("answers", [])
-    language = "en"
+    language = request.get("language") or "en"
     
     print(f"🔴 session_id: {session_id}")
     print(f"🔴 answers count: {len(answers)}")
