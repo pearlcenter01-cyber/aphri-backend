@@ -228,16 +228,15 @@ async def respond_compatibility(
         db.add(CompatibilityQuestion(
             id=str(uuid4()).replace('-', ''),
             session_id=session.id,
-            question_text=q.get('question', ''),
-            question_text_am=q.get('question_am', ''),
-            options=json.dumps(q.get('options', [])) or None,
-            options_am=json.dumps(q.get('options_am', [])) or None,
+            question_text=q.get('text_en') or q.get('text_am', ''),
+            question_text_am=q.get('text_am') or q.get('text_en', ''),
+            options=json.dumps(q.get('options_en') or q.get('options_am', [])),
+            options_am=json.dumps(q.get('options_am') or q.get('options_en', [])),
             category=q.get('method', 'General'),
             question_index=idx,
         ))
-        
-        print(f"🔴 Saved question {idx+1}: {question_text[:50]}... ({len(options)} options, {method})")
-    
+        print(f"🔴 Saved question {idx+1}")
+
     db.commit()
     print("🔴 All questions saved to database")
     
@@ -322,8 +321,6 @@ async def get_compatibility_questions(
                 language=language,
                 session_id=session.id,
             )[:5]
-
-
             print(f"🔴 Generated {len(generated)} questions")
         except Exception as e:
             print(f"❌ Generation failed: {e}")
@@ -333,10 +330,10 @@ async def get_compatibility_questions(
             db.add(CompatibilityQuestion(
                 id=str(uuid4()).replace("-", ""),
                 session_id=session.id,
-                question_text=q.get("question", ""),
-                question_text_am=q.get("question_am", ""),
-                options=json.dumps(q.get("options", [])) or None,
-                options_am=json.dumps(q.get("options_am", [])) or None,
+                question_text=q.get("text_en") or q.get("text_am", ""),
+                question_text_am=q.get("text_am") or q.get("text_en", ""),
+                options=json.dumps(q.get("options_en") or q.get("options_am", [])),
+                options_am=json.dumps(q.get("options_am") or q.get("options_en", [])),
                 category=q.get("method", "General"),
                 question_index=idx,
             ))
