@@ -228,14 +228,14 @@ async def respond_compatibility(
         db.add(CompatibilityQuestion(
             id=str(uuid4()).replace('-', ''),
             session_id=session.id,
-            question_text=q.get('text_en') or q.get('text_am', ''),
-            question_text_am=q.get('text_am') or q.get('text_en', ''),
-            options=json.dumps(q.get('options_en') or q.get('options_am', [])),
-            options_am=json.dumps(q.get('options_am') or q.get('options_en', [])),
+            question_text=q.get('question', ''),
+            question_text_am=q.get('question_am', ''),
+            options=json.dumps(q.get('options', [])) if q.get('options') else None,
+            options_am=json.dumps(q.get('options_am', [])) if q.get('options_am') else None,
             category=q.get('method', 'General'),
             question_index=idx,
         ))
-        print(f"🔴 Saved question {idx+1}")
+        print(f"🔴 Saved question {idx+1}: {(q.get('question') or '')[:60]}")
 
     db.commit()
     print("🔴 All questions saved to database")
@@ -330,10 +330,10 @@ async def get_compatibility_questions(
             db.add(CompatibilityQuestion(
                 id=str(uuid4()).replace("-", ""),
                 session_id=session.id,
-                question_text=q.get("text_en") or q.get("text_am", ""),
-                question_text_am=q.get("text_am") or q.get("text_en", ""),
-                options=json.dumps(q.get("options_en") or q.get("options_am", [])),
-                options_am=json.dumps(q.get("options_am") or q.get("options_en", [])),
+                question_text=q.get("question", ""),
+                question_text_am=q.get("question_am", ""),
+                options=json.dumps(q.get("options", [])) if q.get("options") else None,
+                options_am=json.dumps(q.get("options_am", [])) if q.get("options_am") else None,
                 category=q.get("method", "General"),
                 question_index=idx,
             ))
