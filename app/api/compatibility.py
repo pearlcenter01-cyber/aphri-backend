@@ -71,19 +71,13 @@ async def request_compatibility(
     db.add(session)
     db.commit()
     db.refresh(session)
-    
+
     print(f"🔴 New session created: {session.id}")
-    
-    my_responses = db.query(CompatibilityResponse).filter(
-        CompatibilityResponse.session_id == session.id,
-        CompatibilityResponse.user_id == current_user.id,
-    ).all()
-    my_answers = {r.question_id: r.response_text for r in my_responses}
 
     return {
+        "message": "Compatibility request sent",
         "session_id": session.id,
-        "questions": result,
-        "my_answers": my_answers,
+        "status": session.status
     }
 
 @router.post("/request/respond")
@@ -386,28 +380,14 @@ async def get_compatibility_questions(
 
     # ✅ If the session is already complete, don't regenerate — questions and report are final
     if session.status == "complete":
-        print(f"🔴 Session complete — returning final questions")
-        questions = db.query(CompatibilityQuestion).filter(
-            CompatibilityQuestion.session_id == session_id
-        ).order_by(CompatibilityQuestion.question_index).all()
-        result = []
-        for q in questions:
-            options = []
-            if q.options:
-                try:
-                    options = json.loads(q.options)
-                except:
-                    options = []
-            result.append({
-                "id": q.id,
-                "text": q.question_text,
-                "options": options,
-                "method": q.category or "General",
-            })
+        print(f"🔴 Session complete — returning report")
         return {
             "session_id": session.id,
             "status": "complete",
-            "questions": result,
+            "report": session.report,
+            "score": session.score,
+            "questions": [],
+            "my_answers": {},
         }
 
     questions = db.query(CompatibilityQuestion).filter(
@@ -493,9 +473,16 @@ async def get_compatibility_questions(
             "method": q.category or "General"
         })
 
+    my_responses = db.query(CompatibilityResponse).filter(
+        CompatibilityResponse.session_id == session.id,
+        CompatibilityResponse.user_id == current_user.id,
+    ).all()
+    my_answers = {r.question_id: r.response_text for r in my_responses}
+
     return {
         "session_id": session.id,
-        "questions": result
+        "questions": result,
+        "my_answers": my_answers,
     }
 
 @router.post("/answers")
