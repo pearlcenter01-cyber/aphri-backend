@@ -115,9 +115,9 @@ class CreditService:
         credits = plan["credits"]
         duration_days = plan["duration_days"]
 
-        # Set plan and credits
+        # Set plan and add credits to existing balance
         user.plan_type = plan_type
-        user.credits_remaining = credits
+        user.credits_remaining = (user.credits_remaining or 0) + credits
         user.credits_reset_at = datetime.utcnow() + timedelta(days=duration_days)
 
         db.commit()
