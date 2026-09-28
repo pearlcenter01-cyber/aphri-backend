@@ -154,46 +154,91 @@ class AIService:
             ]
 
     @staticmethod
-    def analyze_compatibility(user_responses: List[str], partner_responses: List[str], language: str = "en") -> Dict[str, Any]:
+    def analyze_compatibility(
+        user_responses: List[str],
+        partner_responses: List[str],
+        person1_name: str = "You",
+        person2_name: str = "Your partner",
+        language: str = "en",
+    ) -> Dict[str, Any]:
         print("🔴🔴🔴 analyze_compatibility CALLED!")
 
         lang_name = "Amharic" if language == "am" else "English"
 
         prompt = f"""
-        You are a relationship compatibility expert using the combined Gottman Method,
-        Attachment Theory, and Big Five personality framework.
+        You are a warm, wise friend giving relationship advice — not a therapist, not a clinical psychologist.
+        You speak plainly, kindly, and specifically. You never use jargon. You never say "communication is key."
+        You sound like someone who knows them both and wants them to succeed.
 
-        Partner 1's answers to 5 compatibility questions:
+        The two people are {person1_name} and {person2_name}.
+
+        {person1_name}'s answers to 5 compatibility questions:
         {json.dumps(user_responses, indent=2)}
 
-        Partner 2's answers to the same 5 compatibility questions:
+        {person2_name}'s answers to the same 5 questions:
         {json.dumps(partner_responses, indent=2)}
 
-        Analyze the compatibility between these two people.
         Write the entire report in {lang_name}.
-        Provide a comprehensive analysis with the following:
 
-        1. OVERALL COMPATIBILITY SCORE (0-100%): Calculate based on alignment of values, communication style, emotional needs, and goals.
+        Use their real names — {person1_name} and {person2_name} — everywhere.
+        Never say "Partner 1", "Partner 2", "person1", or "person2" in the prose.
+        Speak directly to them.
 
-        2. STRENGTHS (3-4 key areas where they are highly compatible): Highlight specific areas of alignment with examples from their answers.
+        Write a personalized report in the exact JSON structure below. Every sentence should sound
+        like it came from a real person who read their answers carefully, not from a formula.
 
-        3. CHALLENGES (3-4 key areas where they differ): Identify potential conflict areas with specific examples from their answers.
-
-        4. KEY INSIGHTS: Personality insights about each person based on their answers.
-
-        5. RECOMMENDATIONS: Practical advice for building a strong relationship based on their compatibility profile.
-
-        Return ONLY a JSON object with the following structure:
+        Structure:
         {{
-            "score": 75,
-            "strengths": ["text1", "text2", "text3"],
-            "challenges": ["text1", "text2", "text3"],
-            "insights": {{
-                "person1": "text",
-                "person2": "text"
+            "score": <integer 0-100, your honest overall compatibility estimate>,
+            "opening": "<2-3 sentences. Acknowledge what the two of them seem to be building. Warm, specific, no fluff.>",
+            "what_works": [
+                "<1 sentence each. Concrete things you noticed in their answers that are already strengths between them.>",
+                "<1 sentence each.>",
+                "<1 sentence each.>"
+            ],
+            "what_to_watch": [
+                "<1 sentence each. Friction points, said gently. Not 'you're wrong' — more like 'this is where you two might rub.'>",
+                "<1 sentence each.>",
+                "<1 sentence each.>"
+            ],
+            "for_you": {{
+                "person1": {{
+                    "do": [
+                        "<specific action, 1 sentence, written directly to {person1_name}>",
+                        "<specific action>",
+                        "<specific action>"
+                    ],
+                    "dont": [
+                        "<specific thing to avoid, 1 sentence, written directly to {person1_name}>",
+                        "<specific thing to avoid>",
+                        "<specific thing to avoid>"
+                    ]
+                }},
+                "person2": {{
+                    "do": [
+                        "<specific action, 1 sentence, written directly to {person2_name}>",
+                        "<specific action>",
+                        "<specific action>"
+                    ],
+                    "dont": [
+                        "<specific thing to avoid, 1 sentence, written directly to {person2_name}>",
+                        "<specific thing to avoid>",
+                        "<specific thing to avoid>"
+                    ]
+                }}
             }},
-            "recommendations": "text"
+            "closing": "<2-3 sentences. Encouraging, grounded, personal. End with warmth, not a summary.>"
         }}
+
+        Rules:
+        - Write the 'for_you' sections directly to each person, using 'you' and their name.
+        - In opening, what_works, what_to_watch, and closing, write to the couple by name ("{person1_name} and {person2_name}", "the two of you").
+        - Be specific. 'Take time to listen' is bad. 'Next time you disagree about plans, try saying "tell me more" before you explain your side' is good.
+        - Do not repeat the same idea in different sections.
+        - Do not mention "question 3" or "their answers to question 5". Refer to behavior, not to the test.
+        - Roughly 400-500 words total.
+        - If the score is below 50, be honest but kind. Don't pretend it's a great match if it isn't.
+        - If the score is above 80, don't oversell it — real relationships still take work.
         """
 
         try:
@@ -202,11 +247,11 @@ class AIService:
             response = client.chat.completions.create(
                 model=settings.OPENAI_MODEL,
                 messages=[
-                    {"role": "system", "content": f"You are a relationship compatibility expert. Analyze answers and provide a detailed compatibility report in {lang_name}."},
+                    {"role": "system", "content": f"You are a warm, wise friend giving relationship advice in {lang_name}. Speak plainly. Use the two people's real names — never 'Partner 1' or 'Partner 2'. Follow the JSON structure exactly."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.7,
-                max_tokens=1500
+                temperature=0.8,
+                max_tokens=2000
             )
 
             print("🔴 OpenAI analysis response received!")
@@ -216,12 +261,11 @@ class AIService:
             json_match = re.search(r'\{.*\}', report_text, re.DOTALL)
             if json_match:
                 report = json.loads(json_match.group())
-                print(f"🔴 Report extracted successfully: score={report.get('score', 'N/A')}")
-                return report
             else:
                 report = json.loads(report_text)
-                print(f"🔴 Report extracted successfully: score={report.get('score', 'N/A')}")
-                return report
+
+            print(f"🔴 Report extracted successfully: score={report.get('score', 'N/A')}")
+            return report
 
         except Exception as e:
             print(f"❌ Error analyzing compatibility: {e}")
@@ -229,13 +273,14 @@ class AIService:
             traceback.print_exc()
             return {
                 "score": 50,
-                "strengths": ["Both are willing to explore their compatibility!"],
-                "challenges": ["Need more data for a complete analysis."],
-                "insights": {
-                    "person1": "Open to exploring relationships.",
-                    "person2": "Open to exploring relationships."
+                "opening": f"{person1_name} and {person2_name}, you both showed up honestly for this. That alone says something.",
+                "what_works": ["You're both willing to look at this together."],
+                "what_to_watch": ["There's not enough here yet for a full picture."],
+                "for_you": {
+                    "person1": {"do": ["Keep showing up like this."], "dont": ["Don't rush the process."]},
+                    "person2": {"do": ["Keep showing up like this."], "dont": ["Don't rush the process."]},
                 },
-                "recommendations": "Communicate openly and honestly with each other. Take time to understand each other's perspectives."
+                "closing": "Talk to each other. That's where it starts.",
             }
 
     @staticmethod
