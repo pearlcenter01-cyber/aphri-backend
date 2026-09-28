@@ -2,6 +2,11 @@ import json
 import re
 from typing import List, Dict, Any
 
+from app.data.compatibility_questions import (
+    COMPATIBILITY_QUESTION_SETS,
+    get_compatibility_question_set,
+)
+
 # ✅ New SDK (openai>=1.0.0)
 from openai import OpenAI
 
@@ -19,148 +24,48 @@ print(f"🔴 OpenAI Model: {settings.OPENAI_MODEL}")
 class AIService:
 
     @staticmethod
-    def generate_compatibility_questions(user_profile: Dict, partner_profile: Dict, language: str = "en") -> List[Dict]:
-        lang_name = "Amharic" if language == "am" else "English"
-        print("🔴🔴🔴 generate_compatibility_questions CALLED!")
-
-        prompt = f"""
-        You are a relationship compatibility expert using the combined Gottman Method, 
-        Attachment Theory, and Big Five personality framework.
-        
-        User 1 Profile:
-        - Looking for: {user_profile.get('looking_for', 'Serious Relationship')}
-        - Age: {user_profile.get('age', 'Unknown')}
-        
-        User 2 Profile:
-        - Looking for: {partner_profile.get('looking_for', 'Serious Relationship')}
-        - Age: {partner_profile.get('age', 'Unknown')}
-        
-        Generate 5 deep, psychological questions to assess their compatibility.
-        Write ALL question text and ALL multiple-choice options in {lang_name}.
-        Include questions from all 3 frameworks:
-        
-        1. GOTTMAN METHOD (2 questions): Conflict resolution, communication, trust
-        2. ATTACHMENT THEORY (2 questions): Emotional needs, security, intimacy
-        3. BIG FIVE (1 questions): Personality alignment, values, lifestyle
-        
-        For EACH question:
-        1. Make the question deep and thought-provoking
-        2. Provide EXACTLY 4 multiple choice options (A, B, C, D)
-        3. Make the options challenging - NO obvious right answers. All options should be valid perspectives that real people hold.
-        4. The options should reveal different personality traits, attachment styles, or communication patterns
-        5. Avoid options that are clearly "good" or "bad" - make all options equally valid but different
-        
-        The framework/method it belongs to.
-        
-        Return ONLY a JSON array with 5 objects. Each object must have this shape:
-[
-    {{
-        "question": "<unique psychological question>",
-        "options": ["<option A>", "<option B>", "<option C>", "<option D>"],
-        "method": "<Gottman Method | Attachment Theory | Big Five>"
-    }},
-    ...
-]
-
-
-
+    def generate_compatibility_questions(
+        user_profile: Dict,
+        partner_profile: Dict,
+        language: str = "en",
+        session_id: str = "",
+    ) -> List[Dict]:
         """
+        Load 5 compatibility questions from the local bank.
+        Deterministic per session_id, so both partners get the same set.
+        Returns the same shape as before: [{question, options, method}, ...]
+        """
+        print("🔴🔴🔴 generate_compatibility_questions CALLED (local bank)!")
 
-        try:
-            print("🔴 About to call OpenAI API...")
-            print(f"🔴 Prompt (first 200 chars): {prompt[:200]}...")
+        # Fall back to a stable seed if no session_id is passed
+        seed = session_id or f"{user_profile.get('id')}-{partner_profile.get('id')}"
+        chosen_set = get_compatibility_question_set(seed)
 
-            response = client.chat.completions.create(
-                model=settings.OPENAI_MODEL,
-                messages=[
-                    {"role": "system", "content": "You are a relationship compatibility expert. Generate questions with 4 challenging, equal-validity multiple choice options. No obvious right answers. Make all options equally valid but different."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.9,
-                max_tokens=1500
-            )
+        use_am = (language == "am")
 
-            print("🔴 OpenAI response received!")
+        questions = []
+        for q in chosen_set["questions"]:
+            questions.append({
+                "question": q["text_am"] if use_am else q["text_en"],
+                "options":  q["options_am"] if use_am else q["options_en"],
+                "method":   q["method"],
+            })
 
-            questions_text = response.choices[0].message.content.strip()
-            print(f"🔴 Response text (first 200 chars): {questions_text[:200]}...")
-
-            json_match = re.search(r'\[.*\]', questions_text, re.DOTALL)
-            if json_match:
-                questions = json.loads(json_match.group())
-                print(f"🔴 Extracted {len(questions)} questions from JSON")
-                return questions
-            else:
-                questions = json.loads(questions_text)
-                print(f"🔴 Extracted {len(questions)} questions from response")
-                return questions
-
-        except Exception as e:
-            print(f"❌ Error generating questions: {e}")
-            import traceback
-            traceback.print_exc()
-            print("🔴 Using fallback questions...")
-            return [
-                {
-                    "question": "When your partner expresses a need that conflicts with your own, what do you typically do?",
-                    "options": [
-                        "I prioritize my partner's need and sacrifice my own",
-                        "I express my need and work toward a compromise",
-                        "I withdraw and hope the conflict resolves itself",
-                        "I assert my need and expect my partner to accommodate"
-                    ],
-                    "method": "Gottman Method"
-                },
-                {
-                    "question": "What does commitment mean to you in a relationship?",
-                    "options": [
-                        "Staying together through all challenges, regardless of personal cost",
-                        "Choosing each other daily, with the freedom to leave",
-                        "Building a life together while maintaining individual independence",
-                        "A sacred bond that requires sacrifice and compromise"
-                    ],
-                    "method": "Gottman Method"
-                },
-                {
-                    "question": "How do you typically respond when you feel emotionally hurt by your partner?",
-                    "options": [
-                        "I withdraw to process my feelings alone",
-                        "I confront them immediately and express my hurt",
-                        "I reflect on whether my reaction is justified before responding",
-                        "I become distant and wait for them to notice"
-                    ],
-                    "method": "Gottman Method"
-                },
-                {
-                    "question": "What makes you feel most emotionally secure in a relationship?",
-                    "options": [
-                        "Consistent reassurance and validation from my partner",
-                        "Knowing we can be independent without losing connection",
-                        "Feeling understood even when we disagree",
-                        "Physical presence and affection on a regular basis"
-                    ],
-                    "method": "Attachment Theory"
-                },
-                {
-                    "question": "When you're stressed or anxious, what do you need most from a partner?",
-                    "options": [
-                        "Space to process my emotions on my own",
-                        "Active listening and emotional support",
-                        "Practical help to solve the problem",
-                        "Physical comfort and closeness"
-                    ],
-                    "method": "Attachment Theory"
-                },
-            ]
+        print(f"🔴 Loaded {len(questions)} questions from set '{chosen_set['id']}' (seed={seed})")
+        return questions
 
     @staticmethod
     def analyze_compatibility(
+        questions: List[Dict],
         user_responses: List[str],
         partner_responses: List[str],
         person1_name: str = "You",
         person2_name: str = "Your partner",
         language: str = "en",
     ) -> Dict[str, Any]:
+
+
+
         print("🔴🔴🔴 analyze_compatibility CALLED!")
 
         lang_name = "Amharic" if language == "am" else "English"
@@ -172,11 +77,17 @@ class AIService:
 
         The two people are {person1_name} and {person2_name}.
 
-        {person1_name}'s answers to 5 compatibility questions:
-        {json.dumps(user_responses, indent=2)}
+        The 5 questions they were both asked, and how each answered:
 
-        {person2_name}'s answers to the same 5 questions:
-        {json.dumps(partner_responses, indent=2)}
+        {json.dumps([
+            {
+                "question": questions[i]["question"] if i < len(questions) else "",
+                "method":   questions[i].get("method", "") if i < len(questions) else "",
+                person1_name: user_responses[i] if i < len(user_responses) else "",
+                person2_name: partner_responses[i] if i < len(partner_responses) else "",
+            }
+            for i in range(max(len(questions), len(user_responses), len(partner_responses)))
+        ], ensure_ascii=False, indent=2)}
 
         Write the entire report in {lang_name}.
 

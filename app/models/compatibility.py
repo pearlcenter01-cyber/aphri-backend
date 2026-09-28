@@ -29,7 +29,9 @@ class CompatibilityQuestion(Base):
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     session_id = Column(String(36), ForeignKey("compatibility_sessions.id"), nullable=False)
     question_text = Column(Text, nullable=False)
-    options = Column(Text, nullable=True)  # ✅ ADD THIS - JSON string of options
+    question_text_am = Column(Text, nullable=True)
+    options = Column(Text, nullable=True)  # JSON string of English options
+    options_am = Column(Text, nullable=True)  # JSON string of Amharic options
     category = Column(String(50))  # gottman, attachment, big_five
     question_index = Column(Integer, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)

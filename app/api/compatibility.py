@@ -196,7 +196,12 @@ async def respond_compatibility(
     print("🔴🔴🔴 ABOUT TO CALL AIService.generate_compatibility_questions")
     
     try:
-        questions = AIService.generate_compatibility_questions(user_profile, partner_profile, language=language)
+        questions = AIService.generate_compatibility_questions(
+            user_profile,
+            partner_profile,
+            language=language,
+            session_id=session.id,
+        )
         print(f"🔴🔴🔴 QUESTIONS GENERATED SUCCESSFULLY: {len(questions)} questions")
         if questions:
             print(f"🔴 First question: {questions[0].get('question', 'None')[:50]}...")
@@ -395,7 +400,7 @@ async def get_compatibility_questions(
     ).order_by(CompatibilityQuestion.question_index).all()
 
     # ✅ Self-heal: if both agreed but no questions, generate them now
-    if not questions and session.status in ("pending", "both_agreed", "answering"):
+    if not questions and session.status in ("both_agreed", "answering"):
         print("🔴 No questions found — generating in English...")
 
         # ✅ FIX 1 + FIX 2: wipe old responses and reset session state
@@ -422,8 +427,13 @@ async def get_compatibility_questions(
 
         try:
             generated = AIService.generate_compatibility_questions(
-                user_profile, partner_profile, language="en"
+                user_profile,
+                partner_profile,
+                language="en",
+                session_id=session.id,
             )[:5]
+
+
             print(f"🔴 Generated {len(generated)} questions")
         except Exception as e:
             print(f"❌ Generation failed: {e}")
@@ -629,14 +639,27 @@ async def submit_compatibility_answers(
         person1_name = user_obj.first_name if user_obj else "You"
         person2_name = partner_obj.first_name if partner_obj else "Your partner"
 
+        # Build the questions list in the shape analyze_compatibility expects
+        questions_for_report = [
+            {
+                "question": q.question_text,
+                "method": q.category or "General",
+            }
+            for q in all_questions
+        ]
+
         print("🔴 Calling AI for analysis...")
         report = AIService.analyze_compatibility(
+            questions_for_report,
             user_answers,
             partner_answers,
             person1_name=person1_name,
             person2_name=person2_name,
             language=language,
         )
+
+
+
         print(f"🔴 Analysis complete! Score: {report.get('score', 'N/A')}")
         
         session.status = "complete"
