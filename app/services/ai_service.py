@@ -41,14 +41,14 @@ class AIService:
         seed = session_id or f"{user_profile.get('id')}-{partner_profile.get('id')}"
         chosen_set = get_compatibility_question_set(seed)
 
-        use_am = (language == "am")
-
         questions = []
         for q in chosen_set["questions"]:
             questions.append({
-                "question": q["text_am"] if use_am else q["text_en"],
-                "options":  q["options_am"] if use_am else q["options_en"],
-                "method":   q["method"],
+                "question": q.get("text_en", ""),
+                "question_am": q.get("text_am", ""),
+                "options": q.get("options_en", []),
+                "options_am": q.get("options_am", []),
+                "method": q.get("method", "General"),
             })
 
         print(f"🔴 Loaded {len(questions)} questions from set '{chosen_set['id']}' (seed={seed})")
