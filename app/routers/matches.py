@@ -765,7 +765,7 @@ async def get_game_questions(
         for idx in range(max_len):
             # --- Candidate's question to me ---
             if idx < len(candidate_questions):
-                if is_released(candidate_uuid_str, user_uuid_str, idx):
+                if is_released(user_uuid_str, candidate_uuid_str, idx):
                     row = row_for(candidate_uuid_str, user_uuid_str, idx)
                     base_id = row.id if row else f"pending_{candidate_uuid_str}_{idx}"
 
