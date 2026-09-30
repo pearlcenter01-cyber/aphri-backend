@@ -702,6 +702,7 @@ async def get_pending_questions(
 @router.get("/game/questions/{candidate_id}")
 async def get_game_questions(
     candidate_id: str,
+    match_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
@@ -740,7 +741,8 @@ async def get_game_questions(
             or_(
                 and_(ChatQuestion.user_id == user_uuid_str, ChatQuestion.candidate_id == candidate_uuid_str),
                 and_(ChatQuestion.user_id == candidate_uuid_str, ChatQuestion.candidate_id == user_uuid_str),
-            )
+            ),
+            ChatQuestion.match_id == match_id,
         ).all()
 
         def row_for(asker_id: str, receiver_id: str, idx: int):
@@ -754,8 +756,6 @@ async def get_game_questions(
             return bool(r and r.is_answered and r.rating is not None)
 
         def is_round_released(idx: int) -> bool:
-            # Round 0 always released. Round N released only when round N-1 is fully
-            # resolved in BOTH directions: each side answered, each asker rated.
             for lower in range(idx):
                 if not is_resolved(user_uuid_str, candidate_uuid_str, lower):
                     return False
@@ -765,8 +765,6 @@ async def get_game_questions(
 
         timeline = []
 
-        # Only show the CANDIDATE's question to me, and MY answer to it.
-        # My own outgoing question is not shown on my screen.
         for idx in range(len(candidate_questions)):
             if not is_round_released(idx):
                 break
@@ -807,10 +805,6 @@ async def get_game_questions(
 
         timeline.sort(key=lambda e: e.get("created_at") or "")
 
-        # ✅ Game is complete when all 3 of my questions have their answers rated,
-        #    AND all 3 of the candidate's questions have my answers rated.
-        # Game is complete when BOTH directions have all 3 rows answered AND rated.
-        # Check against the ChatQuestion rows directly, not the trimmed timeline.
         incoming_rows = [row_for(candidate_uuid_str, user_uuid_str, i) for i in range(3)]
         outgoing_rows = [row_for(user_uuid_str, candidate_uuid_str, i) for i in range(3)]
 
@@ -1036,6 +1030,7 @@ async def potential_match_answer(
     candidate_id = request.get("candidate_id")
     question_index = request.get("question_index")
     answer = request.get("answer")
+    match_id = request.get("match_id")
     
     if not candidate_id or question_index is None or not answer:
         raise HTTPException(status_code=400, detail="Missing required fields")
@@ -1043,7 +1038,8 @@ async def potential_match_answer(
     existing = db.query(ChatQuestion).filter(
         ChatQuestion.user_id == candidate_id,
         ChatQuestion.candidate_id == current_user.id,
-        ChatQuestion.question_index == question_index
+        ChatQuestion.question_index == question_index,
+        ChatQuestion.match_id == match_id,
     ).first()
     
     # ✅ DEDUCT 1 CREDIT on first answer to this user
@@ -1070,7 +1066,7 @@ async def potential_match_answer(
         
         new_question = ChatQuestion(
             id=str(uuid4()).replace('-', ''),
-            match_id=None,
+            match_id=match_id,
             user_id=candidate_id,
             candidate_id=current_user.id,
             question_index=question_index,
