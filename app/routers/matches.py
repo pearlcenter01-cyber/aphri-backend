@@ -763,7 +763,7 @@ async def get_game_questions(
                     return False
             return True
 
-                timeline = []
+        timeline = []
         max_len = max(len(candidate_questions), len(my_questions), 0)
 
         for idx in range(max_len):
