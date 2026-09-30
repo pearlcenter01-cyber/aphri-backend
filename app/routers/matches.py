@@ -764,98 +764,59 @@ async def get_game_questions(
             return True
 
         timeline = []
-        max_len = max(len(candidate_questions), len(my_questions), 0)
 
-        for idx in range(max_len):
+        # Only show the CANDIDATE's question to me, and MY answer to it.
+        # My own outgoing question is not shown on my screen.
+        for idx in range(len(candidate_questions)):
             if not is_round_released(idx):
                 break
 
-            # --- Candidate's question to me ---
-            if idx < len(candidate_questions):
-                row = row_for(candidate_uuid_str, user_uuid_str, idx)
-                base_id = row.id if row else f"pending_{candidate_uuid_str}_{idx}"
+            row = row_for(candidate_uuid_str, user_uuid_str, idx)
+            base_id = row.id if row else f"pending_{candidate_uuid_str}_{idx}"
 
+            timeline.append({
+                "id": f"q_{base_id}",
+                "db_id": row.id if row else None,
+                "user_id": candidate_uuid_str,
+                "candidate_id": user_uuid_str,
+                "question_index": idx,
+                "question_text": candidate_questions[idx],
+                "answer_text": None,
+                "rating": None,
+                "is_answered": row.is_answered if row else False,
+                "created_at": row.created_at.isoformat() if row else datetime.utcnow().isoformat(),
+                "answered_at": None,
+                "is_answer_event": False,
+            })
+
+            if row and row.is_answered and row.answer_text:
                 timeline.append({
-                    "id": f"q_{base_id}",
-                    "db_id": row.id if row else None,
-                    "user_id": candidate_uuid_str,
-                    "candidate_id": user_uuid_str,
-                    "question_index": idx,
-                    "question_text": candidate_questions[idx],
-                    "answer_text": None,
-                    "rating": None,
-                    "is_answered": row.is_answered if row else False,
-                    "created_at": row.created_at.isoformat() if row else datetime.utcnow().isoformat(),
-                    "answered_at": None,
-                    "is_answer_event": False,
-                })
-
-                if row and row.is_answered and row.answer_text:
-                    timeline.append({
-                        "id": f"a_{base_id}",
-                        "db_id": row.id,
-                        "user_id": user_uuid_str,
-                        "candidate_id": candidate_uuid_str,
-                        "question_index": idx,
-                        "question_text": candidate_questions[idx],
-                        "answer_text": row.answer_text,
-                        "rating": row.rating,
-                        "is_answered": True,
-                        "created_at": (row.answered_at or row.created_at).isoformat(),
-                        "answered_at": (row.answered_at or row.created_at).isoformat(),
-                        "is_answer_event": True,
-                    })
-
-            # --- My question to the candidate ---
-            if idx < len(my_questions):
-                row = row_for(user_uuid_str, candidate_uuid_str, idx)
-                base_id = row.id if row else f"pending_{user_uuid_str}_{idx}"
-
-                timeline.append({
-                    "id": f"q_{base_id}",
-                    "db_id": row.id if row else None,
+                    "id": f"a_{base_id}",
+                    "db_id": row.id,
                     "user_id": user_uuid_str,
                     "candidate_id": candidate_uuid_str,
                     "question_index": idx,
-                    "question_text": my_questions[idx],
-                    "answer_text": None,
-                    "rating": None,
-                    "is_answered": row.is_answered if row else False,
-                    "created_at": row.created_at.isoformat() if row else datetime.utcnow().isoformat(),
-                    "answered_at": None,
-                    "is_answer_event": False,
+                    "question_text": candidate_questions[idx],
+                    "answer_text": row.answer_text,
+                    "rating": row.rating,
+                    "is_answered": True,
+                    "created_at": (row.answered_at or row.created_at).isoformat(),
+                    "answered_at": (row.answered_at or row.created_at).isoformat(),
+                    "is_answer_event": True,
                 })
-
-                if row and row.is_answered and row.answer_text:
-                    timeline.append({
-                        "id": f"a_{base_id}",
-                        "db_id": row.id,
-                        "user_id": candidate_uuid_str,
-                        "candidate_id": user_uuid_str,
-                        "question_index": idx,
-                        "question_text": my_questions[idx],
-                        "answer_text": row.answer_text,
-                        "rating": row.rating,
-                        "is_answered": True,
-                        "created_at": (row.answered_at or row.created_at).isoformat(),
-                        "answered_at": (row.answered_at or row.created_at).isoformat(),
-                        "is_answer_event": True,
-                    })
 
         timeline.sort(key=lambda e: e.get("created_at") or "")
 
         # ✅ Game is complete when all 3 of my questions have their answers rated,
         #    AND all 3 of the candidate's questions have my answers rated.
-        my_questions = [e for e in timeline if not e["is_answer_event"] and e["user_id"] == user_uuid_str]
-        my_answers = [e for e in timeline if e["is_answer_event"] and e["user_id"] == user_uuid_str]
-        their_questions = [e for e in timeline if not e["is_answer_event"] and e["user_id"] != user_uuid_str]
-        their_answers = [e for e in timeline if e["is_answer_event"] and e["user_id"] != user_uuid_str]
+        # Game is complete when BOTH directions have all 3 rows answered AND rated.
+        # Check against the ChatQuestion rows directly, not the trimmed timeline.
+        incoming_rows = [row_for(candidate_uuid_str, user_uuid_str, i) for i in range(3)]
+        outgoing_rows = [row_for(user_uuid_str, candidate_uuid_str, i) for i in range(3)]
 
         game_complete = (
-            len(my_questions) >= 3 and all(q["is_answered"] for q in my_questions[:3]) and
-            len(their_answers) >= 3 and all(a["rating"] is not None for a in their_answers[:3]) and
-            len(their_questions) >= 3 and all(q["is_answered"] for q in their_questions[:3]) and
-            len(my_answers) >= 3 and all(a["rating"] is not None for a in my_answers[:3])
+            all(r and r.is_answered and r.rating is not None for r in incoming_rows) and
+            all(r and r.is_answered and r.rating is not None for r in outgoing_rows)
         )
 
         return {
