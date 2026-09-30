@@ -14,7 +14,7 @@ COMPATIBILITY_QUESTION_SETS = [
         "questions": [
             {
                 "text_en": "When you and your partner disagree about something important, what happens inside you first?",
-                "text_am": "ከአጋርዎ ጋር በአንድ አስፈላጊ ጉዳይ ሲለያዩ፣ በውስጥዎ መጀመሪያ ምን ይሰማዎታል?",
+                "text_am": "ከባለቤትዎ ጋር በአንድ ጉዳይ ሳይግባቡ ቢቀሩ መጀመርያ በሃሳበዎ የሚመጣው ምንድነው?",
                 "options_en": [
                     "I want to talk it through right away, before feelings settle",
                     "I need space to think before I can say anything useful",
@@ -22,16 +22,16 @@ COMPATIBILITY_QUESTION_SETS = [
                     "I go quiet and hope it fades on its own",
                 ],
                 "options_am": [
-                    "ወዲያውኑ ማውራት እፈልጋለሁ፣ ስሜቶች ከመረጋጋታቸው በፊት",
-                    "ምንም ጠቃሚ ነገር ከመናገሬ በፊት ለማሰብ ቦታ እፈልጋለሁ",
-                    "በፍጥነት ማስተካከል ይጎትተኛል፣ መስዋዕት ቢሆንም",
-                    "ዝም ብዬ በራሱ እንዲያልፍ ተስፋ አደርጋለሁ",
+                    "ሳይውል ሳያድር ቶሎ ተነጋግሮ መፍታትን እመርጣለሁ",
+                    "ምንም ነገር ከመናገሬ በፊት ጥቂት ጊዜ በጉዳዩ ማሰብን እመርጣለሁ።",
+                    "እኔ ልሸነፍ እስቲ ብል እንኳን ውስጤን ይተናነቀኛል።",
+                    "ጉዳዩ እያደር በራሱ እየተስተካከለ ይሄዳል። ጊዜም የማይፈታው የለም ብዬ ስለማስብ ዝም ማለትን እመርጣለሁ።",
                 ],
                 "method": "Gottman Method",
             },
             {
                 "text_en": "How do you usually know when a disagreement is actually resolved?",
-                "text_am": "አንድ አለመግባባት በእውነት እንደተፈታ እንዴት ያውቃሉ?",
+                "text_am": "ከባለቤትዎ ጋር ያልተግባቡበት ጉዳይ ቢኖርና ከጊዜያት በሁዋላ ጉዳዩ ፍፁም መፈታቱን የሚያውቁበት መንገድ ምንድነው?",
                 "options_en": [
                     "When we've both said what we feel and we're still gentle with each other",
                     "When we stop talking about it and move on",
@@ -39,33 +39,33 @@ COMPATIBILITY_QUESTION_SETS = [
                     "When we've apologised and gone back to normal",
                 ],
                 "options_am": [
-                    "ሁለታችንም የምንሰማውን ከተናገርን እና አሁንም በለሆሳስ ከተያያዝን",
-                    "ስለሱ ማውራት ስናቆም እና ወደፊት ስንሄድ",
-                    "በአንድ እቅድ ስንስማማ፣ አንዳንድ ስሜቶች ቢቀሩም",
-                    "ይቅርታ ተጠይቀን ወደ ተለመደው ስንመለስ",
+                    "ሁለታችንም የሚሰማንን ሁሉ ተነጋግረን ስናበቃ ምንም የቅሬታ ስሜት ውስጣችን ከሌለ።",
+                    "ስለጉዳዩ ዳግመኛ ማንሳት አቁመን ህይወታችንን ስንቀጥል።",
+                    "ትንንሽ ቅሬታዎች ቢኖሩም በአንዳንድ እቅዶች ላይ ስንስማማ።",
+                    "ይቅርታ ተጠያይቀን እንደቀድሞው ስንመለስ።",
                 ],
                 "method": "Gottman Method",
             },
             {
                 "text_en": "When you realise you've hurt your partner, what do you do first?",
-                "text_am": "አጋርዎን እንዳሳዘኑ ሲገነዘቡ፣ መጀመሪያ ምን ያደርጋሉ?",
+                "text_am": "ባለቤትዎን ወይም ፍቅረኛዎን በሆነ ምክንያት ስሜታቸውን እንደጎዱ ከተረዱ ምን ያደርጋሉ?",
                 "options_en": [
                     "I apologise right away, even before I fully understand what happened",
                     "I take time to figure out what I actually did, then apologise",
-                    "I explain my side first, so they understand where I was coming from",
+                    "I explain my side first, so they understand why I did that",
                     "I wait to see if they bring it up, and if they don't, I let it go",
                 ],
                 "options_am": [
-                    "ወዲያውኑ ይቅርታ እጠይቃለሁ፣ የተከሰተውን ሙሉ በሙሉ ከመረዳቴ በፊትም",
-                    "በእውነት ምን እንደሠራሁ ለማወቅ ጊዜ እወስዳለሁ፣ ከዚያ ይቅርታ እጠይቃለሁ",
-                    "መጀመሪያ የእኔን ወገን አብራራለሁ፣ ከየት እንደመጣሁ እንዲረዱ",
-                    "እነሱ እስኪያነሱት እጠብቃለሁ፣ ካላነሱት እተወዋለሁ",
+                    "ወዲያውኑ ይቅርታ እጠይቃለሁ፣ ምን እንደተፈጠረ ለማሰላሰል እንኳ ጊዜ አላጠፋም።",
+                    "ይቅርታ ከመጠየቄ በፊት መጀመርያ ጥፋቴ ምኑጋ እንደሆነ እስካውቅ ጊዜ እወስዳለሁ።",
+                    "መጀመርያ በኔ በኩል ያለውን እውነት ለማስረዳት እሞክራለሁ፤ ስለይቅርታ ከማሰቤ በፊት።",
+                    "እነሱ ጉዳዩን ካላነሱትና ቅር መሰኘታቸውን ካልተናገሩ፣እኔም ዝም ብዬ አልፈዋለሁ።",
                 ],
                 "method": "Gottman Method",
             },
             {
                 "text_en": "When a conversation becomes heated, what usually helps you cool down?",
-                "text_am": "አንድ ውይይት ሲጋጋ፣ ብዙውን ጊዜ ምን እንዲረጋጉ ይረዳዎታል?",
+                "text_am": "አንድ ውይይት እየተጋጋለ ከመጣ፤ ቀዝቀዝ እንዲሉ የሚያደርግዎት ምንድነው?",
                 "options_en": [
                     "A short pause — then coming back with a calmer voice",
                     "Hearing the other person say they understand me, even if they disagree",
@@ -73,16 +73,16 @@ COMPATIBILITY_QUESTION_SETS = [
                     "Touching or holding each other, even briefly",
                 ],
                 "options_am": [
-                    "አጭር እረፍት — ከዚያ በተረጋጋ ድምጽ መመለስ",
+                    "ለጊዜው ተወት ማረግና ከዚያ በተረጋጋ ስሜት መመለስ።",
                     "ሌላኛው ሰው ባይስማማም እንኳ እንደሚረዳኝ ሲናገር ማዳመጥ",
                     "ለተወሰነ ጊዜ ርዕሱን መቀየር፣ ከዚያ መመለስ",
-                    "እርስ በርስ መነካካት ወይም መያዝ፣ ለአጭር ጊዜም ቢሆን",
+                    "ለቅፅበትም ቢሆን እጅ ለእጅ መያያዝ ወይም መነካካት",
                 ],
                 "method": "Gottman Method",
             },
             {
                 "text_en": "What do you do with feelings of resentment when they build up?",
-                "text_am": "የቂም ስሜት ሲከማች ምን ያደርጋሉ?",
+                "text_am": "በውስጥዎ ቂም እየተከማቸ ከመጣ ምን ያደርጋሉ?",
                 "options_en": [
                     "I bring it up gently before it becomes a problem",
                     "I write about it, or pray about it, before I speak",
@@ -90,10 +90,10 @@ COMPATIBILITY_QUESTION_SETS = [
                     "I let it out, sometimes more strongly than I mean to",
                 ],
                 "options_am": [
-                    "ችግር ከመሆኑ በፊት በለሆሳስ አነሳዋለሁ",
-                    "ከመናገሬ በፊት ስለሱ እጽፋለሁ፣ ወይም እጸልያለሁ",
-                    "በውስጤ ይዤ እንዲያልፍ ተስፋ አደርጋለሁ",
-                    "አወጣዋለሁ፣ አንዳንድ ጊዜ ከፈለግሁት በላይ በጠንካራ መንገድ",
+                    "ጊዜ በሰጠሁት ቁጥር እየባሰ ስለሚመጣ፣ በጊዜ እንድንፈታው ሀሳብ አቀርባለሁ።",
+                    "ጉዳዩን ከማንሳቴ በፊት እጸልያለሁ፣ ወይም በወረቀት ላይ እጽፈዋለሁ።",
+                    "በውስጤ አምቄ ይዤ ነገር ግን ምንም ነገር እንዳይፈጠር ተስፋ አደርጋለሁ።",
+                    "ዝም አልልም። የፈለገ ቢመጣም እቅጩን መናገር እመርጣለሁ።",
                 ],
                 "method": "Gottman Method",
             },
@@ -108,7 +108,7 @@ COMPATIBILITY_QUESTION_SETS = [
         "questions": [
             {
                 "text_en": "What does someone need to do for you to feel truly safe with them?",
-                "text_am": "ከአንድ ሰው ጋር በእውነት ደህንነት እንዲሰማዎት ምን ማድረግ አለበት?",
+                "text_am": "ከአንድ ሰው ጋር ፍጹም ሰላም የሚሰማዎት ያ ሰው ምን ሲያደርግ ሲያዩ ነው?",
                 "options_en": [
                     "Keep their word on small things, again and again",
                     "Be open about their life — no hidden corners",
@@ -116,10 +116,10 @@ COMPATIBILITY_QUESTION_SETS = [
                     "Tell me the truth even when it's uncomfortable",
                 ],
                 "options_am": [
-                    "በትንንሽ ነገሮች ላይ ቃላቸውን ደጋግመው መጠበቅ",
-                    "ስለ ሕይወታቸው ግልጽ መሆን — የተደበቀ ጥግ የለም",
-                    "እኔ በተሻለ ሁኔታ ሳልሆን ሲቆሙ መቆየት",
-                    "ምቾት በማይሰጥበት ጊዜም ቢሆን እውነቱን መንገር",
+                    "ምንም ብትሆን ብቻ ቃላቸውን በተደጋጋሚ ሲጠበቁ ካየሁ።",
+                    "ምንም ሳይደብቁ ስለህይወታቸው ከነገሩኝ።",
+                    "በችግሬ ሰአት ከጎኔ ከደረሱ።",
+                    "የሚከብድ ጉዳይ ቢሆንም እንኳን፤ እውነቱን ከተናገሩ።",
                 ],
                 "method": "Attachment Theory",
             },
