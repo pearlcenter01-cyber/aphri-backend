@@ -803,6 +803,25 @@ async def get_game_questions(
                     "is_answer_event": True,
                 })
 
+            my_row = row_for(user_uuid_str, candidate_uuid_str, idx)
+            if my_row and my_row.is_answered and my_row.answer_text:
+                timeline.append({
+                    "id": f"a_{my_row.id}",
+                    "db_id": my_row.id,
+                    "user_id": candidate_uuid_str,
+                    "candidate_id": user_uuid_str,
+                    "question_index": idx,
+                    "question_text": my_questions[idx] if idx < len(my_questions) else my_row.question_text,
+                    "answer_text": my_row.answer_text,
+                    "rating": my_row.rating,
+                    "is_answered": True,
+                    "created_at": (my_row.answered_at or my_row.created_at).isoformat(),
+                    "answered_at": (my_row.answered_at or my_row.created_at).isoformat(),
+                    "is_answer_event": True,
+                })
+
+        timeline.sort(key=lambda e: e.get("created_at") or "")
+
         timeline.sort(key=lambda e: e.get("created_at") or "")
 
         incoming_rows = [row_for(candidate_uuid_str, user_uuid_str, i) for i in range(3)]
