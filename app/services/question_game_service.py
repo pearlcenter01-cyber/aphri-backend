@@ -413,14 +413,24 @@ class QuestionGameService:
             )
         ).order_by(ChatQuestion.question_index).all()
         
-        ratings = [q.rating for q in chat_questions if q.rating]
-        
-        if len(ratings) < 6:
+        # Ratings of me-as-asker's questions (i.e. how the OTHER user rated MY answers)
+        # and ratings of them-as-asker's questions (i.e. how I rated THEIR answers).
+        # In ChatQuestion: user_id = asker, candidate_id = answerer.
+        my_answers_ratings = [
+            q.rating for q in chat_questions
+            if q.user_id == game.user_id and q.rating
+        ]
+        their_answers_ratings = [
+            q.rating for q in chat_questions
+            if q.user_id == game.candidate_id and q.rating
+        ]
+
+        if len(my_answers_ratings) < 3 or len(their_answers_ratings) < 3:
             return {'error': 'Not all questions rated yet'}
-        
-        # Final score is based purely on the game ratings (1-5 -> 0-100)
-        avg_rating = sum(ratings) / len(ratings)
-        final_score = (avg_rating / 5) * 100
+
+        their_score_of_me = (sum(my_answers_ratings) / len(my_answers_ratings) / 5) * 100
+        my_score_of_them = (sum(their_answers_ratings) / len(their_answers_ratings) / 5) * 100
+        final_score = min(their_score_of_me, my_score_of_them)
         
         # Save
         game.is_complete = True
@@ -453,6 +463,14 @@ class QuestionGameService:
             if match:
                 match.chat_unlocked_at = datetime.utcnow()
                 print(f"🔓 Chat unlocked for match: {match.id}")
+
+            mirror_game = db.query(MatchQuestionGame).filter(
+                MatchQuestionGame.user_id == game.candidate_id,
+                MatchQuestionGame.candidate_id == game.user_id,
+            ).first()
+            if mirror_game:
+                mirror_game.is_complete = True
+                mirror_game.final_score = final_score
             
             db.commit()
             
@@ -468,6 +486,19 @@ class QuestionGameService:
                 'candidate_id': game.candidate_id
             }
         else:
+            game.is_complete = True
+            game.final_score = final_score
+
+            mirror_game = db.query(MatchQuestionGame).filter(
+                MatchQuestionGame.user_id == game.candidate_id,
+                MatchQuestionGame.candidate_id == game.user_id,
+            ).first()
+            if mirror_game:
+                mirror_game.is_complete = True
+                mirror_game.final_score = final_score
+
+            db.commit()
+
             return {
                 'status': 'not_match',
                 'final_score': final_score,
