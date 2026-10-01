@@ -702,7 +702,6 @@ async def get_pending_questions(
 @router.get("/game/questions/{candidate_id}")
 async def get_game_questions(
     candidate_id: str,
-    match_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
@@ -741,8 +740,7 @@ async def get_game_questions(
             or_(
                 and_(ChatQuestion.user_id == user_uuid_str, ChatQuestion.candidate_id == candidate_uuid_str),
                 and_(ChatQuestion.user_id == candidate_uuid_str, ChatQuestion.candidate_id == user_uuid_str),
-            ),
-            ChatQuestion.match_id == match_id,
+            )
         ).all()
 
         def row_for(asker_id: str, receiver_id: str, idx: int):
