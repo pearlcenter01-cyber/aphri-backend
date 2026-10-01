@@ -1074,6 +1074,8 @@ async def potential_match_answer(
         existing.answer_text = answer
         existing.is_answered = True
         existing.answered_at = datetime.utcnow()
+        if not existing.match_id:
+            existing.match_id = match_id
     else:
         candidate = db.query(User).filter(User.id == candidate_id).first()
         if not candidate or not candidate.custom_questions:
