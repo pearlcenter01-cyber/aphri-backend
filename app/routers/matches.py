@@ -838,7 +838,7 @@ async def get_game_questions(
                             "is_answer_event": True,
                         })
 
-                timeline.sort(key=lambda e: e.get("created_at") or "")
+                        timeline.sort(key=lambda e: (e.get("question_index", 0), e.get("created_at") or ""))
 
         # ✅ Game is complete when all 3 of my questions have their answers rated,
         #    AND all 3 of the candidate's questions have my answers rated.
