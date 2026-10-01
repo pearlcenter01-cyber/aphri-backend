@@ -804,7 +804,8 @@ async def get_game_questions(
                     })
 
             # --- My question to the candidate ---
-            if idx < len(my_questions):
+            incoming_row = row_for(candidate_uuid_str, user_uuid_str, idx)
+            if idx < len(my_questions) and incoming_row and incoming_row.is_answered:
                 row = row_for(user_uuid_str, candidate_uuid_str, idx)
                 base_id = row.id if row else f"pending_{user_uuid_str}_{idx}"
 
