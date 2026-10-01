@@ -810,7 +810,7 @@ async def get_game_questions(
 
                 # My question — show when I've answered theirs, OR when they've answered mine (so I can rate)
                 incoming_row = row_for(candidate_uuid_str, user_uuid_str, idx)
-                they_answered = row and row.is_answered and row.answer_text
+                they_answered = outgoing_row and outgoing_row.is_answered and outgoing_row.answer_text
                 if (incoming_row and incoming_row.is_answered) or they_answered:
                     timeline.append({
                         "id": f"q_{base_id}",
