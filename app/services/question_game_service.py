@@ -404,10 +404,7 @@ class QuestionGameService:
         if not user or not candidate:
             return {'error': 'User not found'}
         
-        # Get 8-question score
-        compatibility = SwipeService.calculate_compatibility(user, candidate)
-        eight_q_score = compatibility['score']
-        
+                
         # Get all chat questions with ratings — both directions
         chat_questions = db.query(ChatQuestion).filter(
             or_(
@@ -421,12 +418,9 @@ class QuestionGameService:
         if len(ratings) < 6:
             return {'error': 'Not all questions rated yet'}
         
-        # Calculate custom score (1-5 -> 0-100)
+        # Final score is based purely on the game ratings (1-5 -> 0-100)
         avg_rating = sum(ratings) / len(ratings)
-        custom_score = (avg_rating / 5) * 100
-        
-        # Final score
-        final_score = (eight_q_score + custom_score) / 2
+        final_score = (avg_rating / 5) * 100
         
         # Save
         game.is_complete = True
