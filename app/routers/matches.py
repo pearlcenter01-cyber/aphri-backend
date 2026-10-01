@@ -791,8 +791,8 @@ async def get_game_questions(
                 timeline.append({
                     "id": f"a_{base_id}",
                     "db_id": row.id,
-                    "user_id": candidate_uuid_str,
-                    "candidate_id": user_uuid_str,
+                    "user_id": user_uuid_str,
+                    "candidate_id": candidate_uuid_str,
                     "question_index": idx,
                     "question_text": candidate_questions[idx],
                     "answer_text": row.answer_text,
