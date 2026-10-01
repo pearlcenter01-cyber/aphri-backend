@@ -563,17 +563,14 @@ async def rate_single_answer(
         db.commit()
         
         all_questions = db.query(ChatQuestion).filter(
-            or_(
-                and_(ChatQuestion.user_id == question.user_id, ChatQuestion.candidate_id == question.candidate_id),
-                and_(ChatQuestion.user_id == question.candidate_id, ChatQuestion.candidate_id == question.user_id),
-            )
+            ChatQuestion.user_id == question.user_id,
+            ChatQuestion.candidate_id == question.candidate_id
         ).all()
 
         rated = [q for q in all_questions if q.is_answered and q.rating]
 
-        # ✅ Both sides must be fully answered and rated: 6 rows (3 per direction)
-        if len(rated) >= 6:
-
+        # ✅ If all 3 are rated, compute the final score (create game row if needed)
+        if len(rated) >= 3:
             game = db.query(MatchQuestionGame).filter(
                 MatchQuestionGame.user_id == question.user_id,
                 MatchQuestionGame.candidate_id == question.candidate_id,
@@ -753,81 +750,108 @@ async def get_game_questions(
             r = row_for(asker_id, receiver_id, idx)
             return bool(r and r.is_answered and r.rating is not None)
 
-        def is_round_released(idx: int) -> bool:
+        def is_released(asker_id: str, receiver_id: str, idx: int) -> bool:
             for lower in range(idx):
-                if not is_resolved(user_uuid_str, candidate_uuid_str, lower):
-                    return False
-                if not is_resolved(candidate_uuid_str, user_uuid_str, lower):
+                if not is_resolved(asker_id, receiver_id, lower):
                     return False
             return True
 
         timeline = []
+        max_len = max(len(candidate_questions), len(my_questions), 0)
 
-        for idx in range(len(candidate_questions)):
-            if not is_round_released(idx):
-                break
+        for idx in range(max_len):
+            # --- Candidate's question to me ---
+            if idx < len(candidate_questions):
+                if is_released(candidate_uuid_str, user_uuid_str, idx):
+                    row = row_for(candidate_uuid_str, user_uuid_str, idx)
+                    base_id = row.id if row else f"pending_{candidate_uuid_str}_{idx}"
 
-            row = row_for(candidate_uuid_str, user_uuid_str, idx)
-            base_id = row.id if row else f"pending_{candidate_uuid_str}_{idx}"
+                    # Question event (sender = candidate, the asker)
+                    timeline.append({
+                        "id": f"q_{base_id}",
+                        "db_id": row.id if row else None,
+                        "user_id": candidate_uuid_str,
+                        "candidate_id": user_uuid_str,
+                        "question_index": idx,
+                        "question_text": candidate_questions[idx],
+                        "answer_text": None,
+                        "rating": None,
+                        "is_answered": row.is_answered if row else False,
+                        "created_at": row.created_at.isoformat() if row else datetime.utcnow().isoformat(),
+                        "answered_at": None,
+                        "is_answer_event": False,
+                    })
 
-            timeline.append({
-                "id": f"q_{base_id}",
-                "db_id": row.id if row else None,
-                "user_id": candidate_uuid_str,
-                "candidate_id": user_uuid_str,
-                "question_index": idx,
-                "question_text": candidate_questions[idx],
-                "answer_text": None,
-                "rating": None,
-                "is_answered": row.is_answered if row else False,
-                "created_at": row.created_at.isoformat() if row else datetime.utcnow().isoformat(),
-                "answered_at": None,
-                "is_answer_event": False,
-            })
+                    # Answer event (sender = me, the answerer)
+                    if row and row.is_answered and row.answer_text:
+                        timeline.append({
+                            "id": f"a_{base_id}",
+                            "db_id": row.id,
+                            "user_id": user_uuid_str,
+                            "candidate_id": candidate_uuid_str,
+                            "question_index": idx,
+                            "question_text": candidate_questions[idx],
+                            "answer_text": row.answer_text,
+                            "rating": row.rating,
+                            "is_answered": True,
+                            "created_at": (row.answered_at or row.created_at).isoformat(),
+                            "answered_at": (row.answered_at or row.created_at).isoformat(),
+                            "is_answer_event": True,
+                        })
 
-            if row and row.is_answered and row.answer_text:
-                timeline.append({
-                    "id": f"a_{base_id}",
-                    "db_id": row.id,
-                    "user_id": user_uuid_str,
-                    "candidate_id": candidate_uuid_str,
-                    "question_index": idx,
-                    "question_text": candidate_questions[idx],
-                    "answer_text": row.answer_text,
-                    "rating": row.rating,
-                    "is_answered": True,
-                    "created_at": (row.answered_at or row.created_at).isoformat(),
-                    "answered_at": (row.answered_at or row.created_at).isoformat(),
-                    "is_answer_event": True,
-                })
+            # --- My question to the candidate ---
+            if idx < len(my_questions):
+                if is_released(user_uuid_str, candidate_uuid_str, idx):
+                    row = row_for(user_uuid_str, candidate_uuid_str, idx)
+                    base_id = row.id if row else f"pending_{user_uuid_str}_{idx}"
 
-            my_row = row_for(user_uuid_str, candidate_uuid_str, idx)
-            if my_row and my_row.is_answered and my_row.answer_text:
-                timeline.append({
-                    "id": f"a_{my_row.id}",
-                    "db_id": my_row.id,
-                    "user_id": candidate_uuid_str,
-                    "candidate_id": user_uuid_str,
-                    "question_index": idx,
-                    "question_text": my_questions[idx] if idx < len(my_questions) else my_row.question_text,
-                    "answer_text": my_row.answer_text,
-                    "rating": my_row.rating,
-                    "is_answered": True,
-                    "created_at": (my_row.answered_at or my_row.created_at).isoformat(),
-                    "answered_at": (my_row.answered_at or my_row.created_at).isoformat(),
-                    "is_answer_event": True,
-                })
+                    # Question event (sender = me, the asker)
+                    timeline.append({
+                        "id": f"q_{base_id}",
+                        "db_id": row.id if row else None,
+                        "user_id": user_uuid_str,
+                        "candidate_id": candidate_uuid_str,
+                        "question_index": idx,
+                        "question_text": my_questions[idx],
+                        "answer_text": None,
+                        "rating": None,
+                        "is_answered": row.is_answered if row else False,
+                        "created_at": row.created_at.isoformat() if row else datetime.utcnow().isoformat(),
+                        "answered_at": None,
+                        "is_answer_event": False,
+                    })
 
-        timeline.sort(key=lambda e: e.get("created_at") or "")
+                    # Answer event (sender = candidate, the answerer)
+                    if row and row.is_answered and row.answer_text:
+                        timeline.append({
+                            "id": f"a_{base_id}",
+                            "db_id": row.id,
+                            "user_id": candidate_uuid_str,
+                            "candidate_id": user_uuid_str,
+                            "question_index": idx,
+                            "question_text": my_questions[idx],
+                            "answer_text": row.answer_text,
+                            "rating": row.rating,
+                            "is_answered": True,
+                            "created_at": (row.answered_at or row.created_at).isoformat(),
+                            "answered_at": (row.answered_at or row.created_at).isoformat(),
+                            "is_answer_event": True,
+                        })
 
-        timeline.sort(key=lambda e: e.get("created_at") or "")
+                timeline.sort(key=lambda e: e.get("created_at") or "")
 
-        incoming_rows = [row_for(candidate_uuid_str, user_uuid_str, i) for i in range(3)]
-        outgoing_rows = [row_for(user_uuid_str, candidate_uuid_str, i) for i in range(3)]
+        # ✅ Game is complete when all 3 of my questions have their answers rated,
+        #    AND all 3 of the candidate's questions have my answers rated.
+        my_questions = [e for e in timeline if not e["is_answer_event"] and e["user_id"] == user_uuid_str]
+        my_answers = [e for e in timeline if e["is_answer_event"] and e["user_id"] == user_uuid_str]
+        their_questions = [e for e in timeline if not e["is_answer_event"] and e["user_id"] != user_uuid_str]
+        their_answers = [e for e in timeline if e["is_answer_event"] and e["user_id"] != user_uuid_str]
 
         game_complete = (
-            all(r and r.is_answered and r.rating is not None for r in incoming_rows) and
-            all(r and r.is_answered and r.rating is not None for r in outgoing_rows)
+            len(my_questions) >= 3 and all(q["is_answered"] for q in my_questions[:3]) and
+            len(their_answers) >= 3 and all(a["rating"] is not None for a in their_answers[:3]) and
+            len(their_questions) >= 3 and all(q["is_answered"] for q in their_questions[:3]) and
+            len(my_answers) >= 3 and all(a["rating"] is not None for a in my_answers[:3])
         )
 
         return {
@@ -1047,7 +1071,6 @@ async def potential_match_answer(
     candidate_id = request.get("candidate_id")
     question_index = request.get("question_index")
     answer = request.get("answer")
-    match_id = request.get("match_id")
     
     if not candidate_id or question_index is None or not answer:
         raise HTTPException(status_code=400, detail="Missing required fields")
@@ -1055,8 +1078,7 @@ async def potential_match_answer(
     existing = db.query(ChatQuestion).filter(
         ChatQuestion.user_id == candidate_id,
         ChatQuestion.candidate_id == current_user.id,
-        ChatQuestion.question_index == question_index,
-        ChatQuestion.match_id == match_id,
+        ChatQuestion.question_index == question_index
     ).first()
     
     # ✅ DEDUCT 1 CREDIT on first answer to this user
@@ -1072,8 +1094,6 @@ async def potential_match_answer(
         existing.answer_text = answer
         existing.is_answered = True
         existing.answered_at = datetime.utcnow()
-        if not existing.match_id:
-            existing.match_id = match_id
     else:
         candidate = db.query(User).filter(User.id == candidate_id).first()
         if not candidate or not candidate.custom_questions:
@@ -1085,7 +1105,7 @@ async def potential_match_answer(
         
         new_question = ChatQuestion(
             id=str(uuid4()).replace('-', ''),
-            match_id=match_id,
+            match_id=None,
             user_id=candidate_id,
             candidate_id=current_user.id,
             question_index=question_index,
