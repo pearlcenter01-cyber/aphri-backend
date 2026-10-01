@@ -806,20 +806,20 @@ async def get_game_questions(
                     base_id = row.id if row else f"pending_{user_uuid_str}_{idx}"
 
                     # Question event (sender = me, the asker)
-                    timeline.append({
-                        "id": f"q_{base_id}",
-                        "db_id": row.id if row else None,
-                        "user_id": user_uuid_str,
-                        "candidate_id": candidate_uuid_str,
-                        "question_index": idx,
-                        "question_text": my_questions[idx],
-                        "answer_text": None,
-                        "rating": None,
-                        "is_answered": row.is_answered if row else False,
-                        "created_at": row.created_at.isoformat() if row else datetime.utcnow().isoformat(),
-                        "answered_at": None,
-                        "is_answer_event": False,
-                    })
+                    #timeline.append({
+                        #"id": f"q_{base_id}",
+                        #"db_id": row.id if row else None,
+                        #"user_id": user_uuid_str,
+                        #"candidate_id": candidate_uuid_str,
+                        #"question_index": idx,
+                        #"question_text": my_questions[idx],
+                        #"answer_text": None,
+                        #"rating": None,
+                        #"is_answered": row.is_answered if row else False,
+                        #"created_at": row.created_at.isoformat() if row else datetime.utcnow().isoformat(),
+                        #"answered_at": None,
+                        #"is_answer_event": False,
+                    #})
 
                     # Answer event (sender = candidate, the answerer)
                     if row and row.is_answered and row.answer_text:
