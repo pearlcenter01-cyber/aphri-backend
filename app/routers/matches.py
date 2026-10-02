@@ -1011,7 +1011,9 @@ async def get_game_matches(
             or_(
                 MatchQuestionGame.user_id == user_uuid,
                 MatchQuestionGame.candidate_id == user_uuid
-            )
+            ),
+            MatchQuestionGame.is_complete == True,
+            MatchQuestionGame.final_score >= 65,
         ).all()
         
         print(f"🔍 Found {len(games)} games")

@@ -337,6 +337,17 @@ class SwipeService:
             if reverse_query.first():
                 mutual_candidates.append(item)
         scored_candidates = mutual_candidates
+
+        # ✅ Exclude pairs whose question game ended in a not-match (score < 65)
+        from app.models.match_question_game import MatchQuestionGame
+        failed = db.query(MatchQuestionGame.candidate_id).filter(
+            MatchQuestionGame.user_id == user_id,
+            MatchQuestionGame.is_complete == True,
+            MatchQuestionGame.final_score < 65,
+        ).all()
+        failed_ids = {r[0] for r in failed}
+        scored_candidates = [c for c in scored_candidates if str(c['user'].id) not in failed_ids]
+
         # Sort by score (highest first)
         scored_candidates.sort(key=lambda x: x['score'], reverse=True)
         
