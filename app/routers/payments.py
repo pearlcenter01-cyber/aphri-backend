@@ -91,11 +91,10 @@ async def payment_redirect(tx_ref: str = ""):
     </style>
   </head>
   <body>
-        <div class="card">
+    <div class="card">
       <div class="check">&#10003;</div>
       <h1>Payment Successful</h1>
       <p>You can close this window and return to the app.</p>
-      <a href="aphri://chatlist" style="display:inline-block;margin-top:20px;padding:14px 28px;background:#e84393;color:#fff;text-decoration:none;border-radius:12px;font-weight:600;">Open Chats</a>
     </div>
   </body>
 </html>
