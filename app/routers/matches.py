@@ -884,6 +884,7 @@ async def get_game_questions(
             "game_complete": game_complete,
             "is_match": is_match,
             "final_score": final_score,
+            "match_id": match_id,
             "user_id": user_uuid_str,
             "candidate_id": candidate_uuid_str,
         }
