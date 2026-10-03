@@ -452,17 +452,32 @@ class QuestionGameService:
             )
             db.add(real_match)
             
-            # ✅ UNLOCK THE CHAT
+            # ✅ FIND OR CREATE THE MATCH ROW
             match = db.query(Match).filter(
-                (Match.user_1_id == game.user_id) & (Match.user_2_id == game.candidate_id)
+                or_(
+                    and_(Match.user_1_id == game.user_id, Match.user_2_id == game.candidate_id),
+                    and_(Match.user_1_id == game.candidate_id, Match.user_2_id == game.user_id),
+                )
             ).first()
+
+            now = datetime.utcnow()
             if not match:
-                match = db.query(Match).filter(
-                    (Match.user_1_id == game.candidate_id) & (Match.user_2_id == game.user_id)
-                ).first()
-            if match:
-                match.chat_unlocked_at = datetime.utcnow()
-                print(f"🔓 Chat unlocked for match: {match.id}")
+                match = Match(
+                    id=str(uuid4()),
+                    user_1_id=game.user_id,
+                    user_2_id=game.candidate_id,
+                    user_1_swiped_at=now,
+                    user_2_swiped_at=now,
+                    matched_at=now,
+                    chat_unlocked_at=now,
+                    is_active=True,
+                    initiator_id=game.user_id,
+                )
+                db.add(match)
+                print(f"✅ Match row CREATED: {match.id}")
+            else:
+                match.chat_unlocked_at = now
+                print(f"🔓 Chat unlocked for existing match: {match.id}")
 
             mirror_game = db.query(MatchQuestionGame).filter(
                 MatchQuestionGame.user_id == game.candidate_id,
