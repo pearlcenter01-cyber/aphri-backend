@@ -1089,6 +1089,7 @@ async def potential_match_answer(
     candidate_id = request.get("candidate_id")
     question_index = request.get("question_index")
     answer = request.get("answer")
+    print(f"🔍 potential_match_answer user={current_user.id} candidate={candidate_id} idx={question_index} answer={(answer or '')[:40]}")
     
     if not candidate_id or question_index is None or not answer:
         raise HTTPException(status_code=400, detail="Missing required fields")
