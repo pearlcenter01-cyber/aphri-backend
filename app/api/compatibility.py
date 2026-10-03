@@ -14,10 +14,75 @@ from app.models.compatibility import (
     CompatibilityQuestion, 
     CompatibilityResponse
 )
+from app.models.match import Match
+from app.models.message import Message
 
 print("🔴🔴🔴 COMPATIBILITY ROUTER MODULE LOADED!")
 
 router = APIRouter(tags=["Compatibility"])  # ✅ Remove prefix here
+
+def _ensure_invitation_message(db, sender, partner_id, session_id):
+    """
+    Ensure a compatibility_request Message exists between sender and partner
+    for this session. Idempotent — safe to call on every request.
+    """
+    existing_msg = db.query(Message).filter(
+        Message.session_id == session_id,
+        Message.message_type == 'compatibility_request',
+    ).first()
+    if existing_msg:
+        print(f"🔴 Invitation message already exists: {existing_msg.id}")
+        return
+
+    match = db.query(Match).filter(
+        or_(
+            and_(Match.user_1_id == sender.id, Match.user_2_id == partner_id),
+            and_(Match.user_1_id == partner_id, Match.user_2_id == sender.id),
+        )
+    ).first()
+
+    now = datetime.utcnow()
+    if not match:
+        match = Match(
+            id=str(uuid4()),
+            user_1_id=sender.id,
+            user_2_id=partner_id,
+            user_1_swiped_at=now,
+            user_2_swiped_at=now,
+            matched_at=now,
+            chat_unlocked_at=now,
+            is_active=True,
+            initiator_id=sender.id,
+        )
+        db.add(match)
+        db.commit()
+        db.refresh(match)
+        print(f"🔴 Match row created for invitation: {match.id}")
+    else:
+        if not match.chat_unlocked_at:
+            match.chat_unlocked_at = now
+            db.commit()
+        print(f"🔴 Using existing match: {match.id}")
+
+    sender_name = (
+        getattr(sender, 'first_name', None)
+        or getattr(sender, 'full_name', None)
+        or 'Someone'
+    )
+
+    invitation = Message(
+        id=str(uuid4()).replace('-', ''),
+        match_id=str(match.id),
+        sender_id=sender.id,
+        receiver_id=partner_id,
+        content=f"{sender_name} wants to explore deep compatibility with you!",
+        message_type='compatibility_request',
+        session_id=session_id,
+        is_read=False,
+    )
+    db.add(invitation)
+    db.commit()
+    print(f"🔴 Invitation message inserted: {invitation.id} session={session_id}")
 
 @router.post("/request")
 async def request_compatibility(
@@ -55,6 +120,7 @@ async def request_compatibility(
     
     if existing:
         print(f"🔴 Session already exists: {existing.id}, status: {existing.status}")
+        _ensure_invitation_message(db, current_user, partner_id, existing.id)
         return {
             "message": "Compatibility request already sent",
             "session_id": existing.id,
@@ -73,6 +139,8 @@ async def request_compatibility(
     db.refresh(session)
 
     print(f"🔴 New session created: {session.id}")
+
+    _ensure_invitation_message(db, current_user, partner_id, session.id)
 
     return {
         "message": "Compatibility request sent",
