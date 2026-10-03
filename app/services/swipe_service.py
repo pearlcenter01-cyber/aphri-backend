@@ -390,6 +390,10 @@ class SwipeService:
                 "photos_revealed": user.photos_revealed,
                 "photo_reveal_date": user.photo_reveal_date.isoformat() if user.photo_reveal_date else None
             })
+
+        print("🔍 FINAL RESULT IDS:", [r["id"] for r in result])
+        print("🔍 CURRENT USER ID:", user_id)
+        
         
         return result
     
