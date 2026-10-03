@@ -495,6 +495,7 @@ class QuestionGameService:
                 'status': 'real_match',
                 'final_score': final_score,
                 'is_match': True,
+                'match_id': str(match.id),
                 'real_matches_count': real_matches_count,
                 'message': f'🎉 Match! You and {candidate.full_name} are now a real match!',
                 'candidate_name': candidate.full_name,

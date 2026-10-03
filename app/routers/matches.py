@@ -587,7 +587,9 @@ async def rate_single_answer(
                 db.add(game)
                 db.commit()
 
-            return QuestionGameService._calculate_final_score(game, db)
+            result = QuestionGameService._calculate_final_score(game, db)
+            result['initiator_id'] = str(current_user.id)
+            return result
 
         # ✅ Otherwise return the next unanswered question if any
         next_question = db.query(ChatQuestion).filter(
