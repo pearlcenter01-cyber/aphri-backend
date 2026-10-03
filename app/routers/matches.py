@@ -856,6 +856,7 @@ async def get_game_questions(
 
         final_score = None
         is_match = False
+        match_id = None
         if game_complete:
             from app.models.match_question_game import MatchQuestionGame
             gm = db.query(MatchQuestionGame).filter(
@@ -865,6 +866,16 @@ async def get_game_questions(
             if gm and gm.final_score is not None:
                 final_score = gm.final_score
                 is_match = final_score >= 65
+
+            if is_match:
+                m = db.query(Match).filter(
+                    or_(
+                        and_(Match.user_1_id == user_uuid_str, Match.user_2_id == candidate_uuid_str),
+                        and_(Match.user_1_id == candidate_uuid_str, Match.user_2_id == user_uuid_str),
+                    )
+                ).first()
+                if m:
+                    match_id = str(m.id)
 
         print(f"🔍 RESPONSE user={user_uuid_str} candidate={candidate_uuid_str} events={len(timeline)} complete={game_complete} match={is_match} score={final_score}")
 
