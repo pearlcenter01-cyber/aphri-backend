@@ -866,6 +866,8 @@ async def get_game_questions(
                 final_score = gm.final_score
                 is_match = final_score >= 65
 
+        print(f"🔍 RESPONSE user={user_uuid_str} candidate={candidate_uuid_str} events={len(timeline)} complete={game_complete} match={is_match} score={final_score}")
+
         return {
             "questions": timeline,
             "game_complete": game_complete,
