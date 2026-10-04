@@ -63,6 +63,22 @@ class Settings:
     APNS_KEY_ID: str = os.getenv("APNS_KEY_ID", "")
     APNS_TEAM_ID: str = os.getenv("APNS_TEAM_ID", "")
     APNS_AUTH_KEY: str = os.getenv("APNS_AUTH_KEY", "")
+
+
+    # ============================================================
+    # EMAIL (SMTP)
+    # ============================================================
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER: str = os.getenv("SMTP_USER", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    SMTP_FROM: str = os.getenv("SMTP_FROM", "")
+    TRANSLATION_INBOX: str = os.getenv("TRANSLATION_INBOX", "pearlcenter01@gmail.com")
+
+    # ============================================================
+    # CREDIT COSTS (cont.)
+    # ============================================================
+    CREDIT_COST_AMHARIC_TRANSLATION = 10
     
     # ============================================================
     # CORS

@@ -734,3 +734,63 @@ async def get_compatibility_sessions(
 @router.get("/test")
 async def test_compatibility():
     return {"status": "Compatibility router is working!"}    
+
+@router.post("/report/{session_id}/request-amharic")
+async def request_amharic_translation(
+    session_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    User requests a manual Amharic translation of their English report.
+    Charges 10 credits and emails the English report to the translation inbox.
+    """
+    from app.services.email_service import EmailService
+    from app.services.credit_service import CreditService
+    from app.config import settings
+
+    print(f"🔴 request_amharic_translation CALLED session={session_id} user={current_user.id}")
+
+    session = db.query(CompatibilitySession).filter(
+        CompatibilitySession.id == session_id,
+        or_(
+            CompatibilitySession.user_id == current_user.id,
+            CompatibilitySession.partner_id == current_user.id,
+        ),
+    ).first()
+
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    if session.status != "complete" or not session.report:
+        raise HTTPException(status_code=400, detail="Report not ready yet")
+
+    # Charge 10 credits
+    CreditService.spend_credits(
+        db,
+        user_id=current_user.id,
+        amount=settings.CREDIT_COST_AMHARIC_TRANSLATION,
+        action="amharic_translation",
+    )
+
+    partner_id = session.partner_id if session.user_id == current_user.id else session.user_id
+    partner = db.query(User).filter(User.id == partner_id).first()
+
+    user_name = f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or "Unknown"
+    partner_name = f"{partner.first_name or ''} {partner.last_name or ''}".strip() if partner else "Unknown"
+
+    EmailService.send_translation_request(
+        user_email=current_user.email,
+        user_name=user_name,
+        partner_name=partner_name,
+        session_id=session.id,
+        english_report=session.report,
+    )
+
+    print(f"🔴 Translation request sent for session {session.id}")
+
+    return {
+        "status": "received",
+        "message": "We'll email the Amharic translation to your registered email within 24 hours.",
+        "credits_charged": settings.CREDIT_COST_AMHARIC_TRANSLATION,
+    }    
