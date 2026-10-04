@@ -585,8 +585,22 @@ async def submit_compatibility_answers(
             CompatibilityResponse.session_id == session_id
         ).order_by(CompatibilityResponse.question_id).all()
         
-        user_answers = [r.response_text for r in all_responses if r.user_id == session.user_id]
-        partner_answers = [r.response_text for r in all_responses if r.user_id == session.partner_id]
+        # Order by question_index to align pairs correctly
+        ordered_qs = sorted(all_questions, key=lambda q: q.question_index)
+        qid_order = [q.id for q in ordered_qs]
+
+        user_map = {r.question_id: r.response_text for r in all_responses if r.user_id == session.user_id}
+        partner_map = {r.question_id: r.response_text for r in all_responses if r.user_id == session.partner_id}
+
+        user_answers = [user_map.get(qid, "") for qid in qid_order]
+        partner_answers = [partner_map.get(qid, "") for qid in qid_order]
+
+        # ✅ Deterministic score: 20 points per matching answer
+        score = 0
+        for a, b in zip(user_answers, partner_answers):
+            if a and b and a == b:
+                score += 20
+        print(f"🔴 DETERMINISTIC SCORE: {score} (user_answers={user_answers} partner_answers={partner_answers})")
         
         print(f"🔴 User answers: {len(user_answers)}")
         print(f"🔴 Partner answers: {len(partner_answers)}")
@@ -614,15 +628,17 @@ async def submit_compatibility_answers(
             person1_name=person1_name,
             person2_name=person2_name,
             language=language,
+            deterministic_score=score,
         )
 
 
 
-        print(f"🔴 Analysis complete! Score: {report.get('score', 'N/A')}")
+        print(f"🔴 Analysis complete! Score: {score}")
         
+        report["score"] = score   # force the computed value
         session.status = "complete"
         session.report = report
-        session.score = report.get("score", 0)
+        session.score = score
         session.completed_at = datetime.utcnow()
         db.commit()
         
