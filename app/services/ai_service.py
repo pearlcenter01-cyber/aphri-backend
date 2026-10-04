@@ -97,7 +97,9 @@ class AIService:
 
         print(f"🔴 analyze_compatibility CALLED with deterministic_score={deterministic_score}")
 
-        lang_name = "Amharic" if language == "am" else "English"
+        # Reports are always generated in English. Amharic is handled manually
+        # via the translation request flow.
+        lang_name = "English"
 
         # Build per-question summary for the AI
         pair_count = min(len(questions), len(user_responses), len(partner_responses))
