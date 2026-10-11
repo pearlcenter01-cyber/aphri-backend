@@ -37,10 +37,12 @@ from app.models.casual import CasualQuestion, CasualResponse, CasualPayment
 # NSFW MODEL PRELOAD
 # ============================================================
 try:
-    import nsfwpy
-    nsfwpy.preload()
+    from nsfwpy import NSFWModel
+    _nsfw_model = NSFWModel()
+    _nsfw_model.warmup()
     print("✅ NSFW model preloaded")
 except Exception as e:
+    _nsfw_model = None
     print(f"⚠️ NSFW preload failed: {e}")
 
 # ============================================================
