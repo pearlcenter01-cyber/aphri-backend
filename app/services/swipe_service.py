@@ -314,7 +314,7 @@ class SwipeService:
                     'score_custom': result['score_custom'],
                     'breakdown': result['breakdown']
                 })
-            else:
+            
                        
                        
         
