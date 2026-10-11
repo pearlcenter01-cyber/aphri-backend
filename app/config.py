@@ -64,6 +64,13 @@ class Settings:
     APNS_TEAM_ID: str = os.getenv("APNS_TEAM_ID", "")
     APNS_AUTH_KEY: str = os.getenv("APNS_AUTH_KEY", "")
 
+    # ============================================================
+    # ADMIN DASHBOARD
+    # ============================================================
+    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "change-me-now")
+    ADMIN_JWT_SECRET: str = os.getenv("ADMIN_JWT_SECRET", "admin-secret-change-me")
+    ADMIN_JWT_EXPIRE_HOURS: int = int(os.getenv("ADMIN_JWT_EXPIRE_HOURS", "8"))
+
 
     # ============================================================
     # EMAIL (SMTP)

@@ -32,6 +32,8 @@ from app.models.match_question_game import MatchQuestionGame
 from app.models.compatibility import CompatibilitySession
 from app.models.real_match import RealMatch
 from app.models.casual import CasualQuestion, CasualResponse, CasualPayment
+from app.models.audit_log import AdminAuditLog
+from app.models.moderation_log import ModerationLog
 
 # ============================================================
 # NSFW MODEL PRELOAD
