@@ -34,6 +34,16 @@ from app.models.real_match import RealMatch
 from app.models.casual import CasualQuestion, CasualResponse, CasualPayment
 
 # ============================================================
+# NSFW MODEL PRELOAD
+# ============================================================
+try:
+    import nsfwpy
+    nsfwpy.preload()
+    print("✅ NSFW model preloaded")
+except Exception as e:
+    print(f"⚠️ NSFW preload failed: {e}")
+
+# ============================================================
 # CREATE DATABASE TABLES (First run only)
 # ============================================================
 Base.metadata.create_all(bind=engine)
