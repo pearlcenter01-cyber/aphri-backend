@@ -91,6 +91,7 @@ class AdminService:
         return {
             "id": str(u.id),
             "email": u.email,
+            "phone_number": getattr(u, "phone_number", None),
             "first_name": u.first_name,
             "last_name": u.last_name,
             "gender": u.gender,

@@ -112,7 +112,7 @@
         <input class="search" id="userSearch" placeholder="Search by email or name..." oninput="loadUsers()">
         <div style="overflow-x:auto;">
           <table>
-            <thead><tr><th>Email</th><th>Name</th><th>Status</th><th>Credits</th><th>Created</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Email</th><th>Phone</th><th>Name</th><th>Status</th><th>Credits</th><th>Created</th><th>Actions</th></tr></thead>
             <tbody id="usersBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
           </table>
         </div>
@@ -281,14 +281,15 @@ async function loadStats() {
 // ============================================================
 async function loadUsers() {
   const body = document.getElementById("usersBody");
-  body.innerHTML = `<tr><td colspan="6" class="empty">Loading…</td></tr>`;
+  body.innerHTML = `<tr><td colspan="7" class="empty">Loading…</td></tr>`;
   const q = document.getElementById("userSearch").value.trim();
   try {
     const list = await api(`/users${q ? `?search=${encodeURIComponent(q)}` : ""}`);
-    if (!list.length) { body.innerHTML = `<tr><td colspan="6" class="empty">No users</td></tr>`; return; }
-    body.innerHTML = list.map(u => `
+        if (!list.length) { body.innerHTML = `<tr><td colspan="7" class="empty">No users</td></tr>`; return; }
+        body.innerHTML = list.map(u => `
       <tr>
         <td>${esc(u.email)}</td>
+        <td>${esc(u.phone_number || "–")}</td>
         <td>${esc((u.first_name||"")+" "+(u.last_name||""))}</td>
         <td>${u.is_active ? '<span class="badge badge-active">Active</span>' : '<span class="badge badge-banned">Banned</span>'}</td>
         <td>${u.credits_remaining ?? 0}</td>
@@ -301,7 +302,8 @@ async function loadUsers() {
         </td>
       </tr>
     `).join("");
-  } catch (e) { body.innerHTML = `<tr><td colspan="6" class="empty">${esc(e.message)}</td></tr>`; }
+    } catch (e) { body.innerHTML = `<tr><td colspan="7" class="empty">${esc(e.message)}</td></tr>`; }
+
 }
 
 async function banUser(id) {
