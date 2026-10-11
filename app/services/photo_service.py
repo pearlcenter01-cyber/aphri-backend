@@ -97,7 +97,24 @@ class PhotoService:
         content = await file.read()
         with open(file_path, "wb") as f:
             f.write(content)
-        
+
+        # ✅ NSFW moderation check
+        try:
+            import nsfwpy
+            result = nsfwpy.classify(file_path)
+            print(f"🔍 NSFW check {filename}: is_nsfw={result.is_nsfw}")
+            if result.is_nsfw:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="This photo violates our community guidelines. Please upload a different image."
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"⚠️ NSFW check failed for {filename}: {e}")
+
         # Create thumbnails
         img = Image.open(io.BytesIO(content))
         
