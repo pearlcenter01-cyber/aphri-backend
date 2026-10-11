@@ -249,11 +249,11 @@ class SwipeService:
     @staticmethod
     def get_matches(db: Session, user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
         """Get all matches for a serious user (50%+ compatibility with filters)"""
-        print(f"🔍 ========== GET_MATCHES START ==========")
+        
         
         # Get current user
         user = db.query(User).filter(User.id == user_id).first()
-        print(f"🔍 Current user: {user.email if user else 'None'}")
+        
         
         if not user:
             return []
@@ -261,23 +261,16 @@ class SwipeService:
         # Only for serious users
                 # Only for serious users
         if user.looking_for != "Serious Relationship":
-            print(f"🔍 User is not serious: {user.looking_for}")
+            
             return []
 
         # ← ADDED: pending users cannot browse matches
         if not user.is_registration_complete:
-            print(f"🔍 User is pending registration — no matches")
+            
             return []
-        
-        print(f"🔍 User looking_for: {user.looking_for}")
-        print(f"🔍 User looking_for_gender: {user.looking_for_gender}")
-        print(f"🔍 User religion: {user.religion}")
-        print(f"🔍 User religion_preferences: {user.religion_preferences}")
-        print(f"🔍 User open_to_single_parent: {user.open_to_single_parent}")
-        print(f"🔍 User open_to_divorced: {user.open_to_divorced}")
-        print(f"🔍 User looking_for_age_min: {user.looking_for_age_min}")
-        print(f"🔍 User looking_for_age_max: {user.looking_for_age_max}")
-        
+                  
+                    
+              
         # Get all other serious users
         query = db.query(User).filter(
             User.id != user_id,
@@ -287,33 +280,33 @@ class SwipeService:
             User.is_registration_complete == True,      # ← ADDED
         )
         
-        print(f"🔍 Before filters: {query.count()} users found")
+        
         
         # ✅ APPLY FILTERS (gender, religion, life status, age)
         query = SwipeService.apply_filters(db, user, query)
         
         other_users = query.all()
-        print(f"🔍 After filters: {len(other_users)} users found")
+        
         
         # Calculate compatibility for each
         scored_candidates = []
         for candidate in other_users:
-            print(f"🔍 Checking candidate: {candidate.email}")
+            
             
             # Skip if candidate has no answers
             answers = candidate.get_compatibility_answers()
-            print(f"   Answers: {answers}")
+            
             if not any(answers.values()):
-                print(f"   ❌ No answers for {candidate.email}")
+                
                 continue
             
             result = SwipeService.calculate_compatibility(user, candidate)
             score = result['score']
-            print(f"   📊 Compatibility score: {score}")
+            
             
             # Only include 50%+ matches
             if score >= 50:
-                print(f"   ✅ {candidate.email} is a match! ({score}%)")
+                
                 scored_candidates.append({
                     'user': candidate,
                     'score': score,
@@ -322,11 +315,8 @@ class SwipeService:
                     'breakdown': result['breakdown']
                 })
             else:
-                print(f"   ❌ {candidate.email} score too low: {score}")
-        
-        print(f"🔍 Total matches found: {len(scored_candidates)}")
-        print(f"🔍 ========== GET_MATCHES END ==========")
-        
+                       
+                       
         
         # ✅ Keep only mutual matches: candidate must also see the current user
         mutual_candidates = []
@@ -390,10 +380,7 @@ class SwipeService:
                 "photos_revealed": user.photos_revealed,
                 "photo_reveal_date": user.photo_reveal_date.isoformat() if user.photo_reveal_date else None
             })
-
-        print("🔍 FINAL RESULT IDS:", [r["id"] for r in result])
-        print("🔍 CURRENT USER ID:", user_id)
-        
+                       
         
         return result
     

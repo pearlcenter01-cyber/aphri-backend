@@ -1,0 +1,19 @@
+import ast
+
+p = r'app\data\compatibility_questions.py'
+tree = ast.parse(open(p, encoding='utf-8').read())
+
+for node in tree.body:
+    if isinstance(node, ast.Assign):
+        for t in node.targets:
+            if isinstance(t, ast.Name) and t.id == 'COMPATIBILITY_QUESTION_SETS':
+                outer = node.value
+                print('outer type:', type(outer).__name__)
+                print('outer lineno:', outer.lineno)
+                print('number of elements:', len(outer.elts))
+                for i, el in enumerate(outer.elts):
+                    print(f'  element {i}: type={type(el).__name__} lineno={el.lineno}')
+                    if isinstance(el, ast.List):
+                        print(f'    <- NESTED LIST at line {el.lineno}, {len(el.elts)} items')
+                        if el.elts:
+                            print(f'       first inner element at line {el.elts[0].lineno}')
