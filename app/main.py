@@ -88,6 +88,10 @@ os.makedirs(os.path.join(settings.DATA_DIR, "photos"), exist_ok=True)
 
 # Mount static files for photos
 app.mount("/photos", StaticFiles(directory=os.path.join(settings.DATA_DIR, "photos")), name="photos")
+# Admin dashboard static files
+_admin_dir = os.path.join(os.path.dirname(__file__), "static")
+os.makedirs(_admin_dir, exist_ok=True)
+app.mount("/admin", StaticFiles(directory=_admin_dir, html=True), name="admin")
 
 # ============================================================
 # INCLUDE ROUTERS
@@ -117,6 +121,8 @@ app.include_router(subscriptions.router, prefix="/api/subscriptions", tags=["Sub
 app.include_router(push.router, prefix="/api/push", tags=["Push Notifications"])
 app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
 app.include_router(credits.router, prefix="/api/credits", tags=["credits"])
+from app.api import admin
+app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 # ❌ DELETE THIS: app.include_router(matches.router, prefix="/api", tags=["matches"])
 # ============================================================
 # WEBSOCKET ROUTES
