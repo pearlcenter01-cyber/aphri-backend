@@ -105,11 +105,29 @@ class PhotoService:
                 print(f"⚠️ NSFW model not loaded — skipping check for {filename}")
             else:
                 result = _nsfw_model.classify(file_path)
-                is_nsfw = getattr(result, 'is_nsfw', None)
-                if is_nsfw is None and isinstance(result, dict):
-                    is_nsfw = result.get('is_nsfw')
+
+                # classify() returns a list of {className, probability} dicts.
+                # Reject if Porn, Hentai, or Sexy exceeds the threshold.
+                is_nsfw = False
+                if isinstance(result, list):
+                    for item in result:
+                        name = (item.get('className') or '').lower()
+                        prob = item.get('probability') or 0
+                        if name in ('porn', 'hentai', 'sexy') and prob >= 0.5:
+                            is_nsfw = True
+                            break
+                elif isinstance(result, dict):
+                    for name, prob in result.items():
+                        if name.lower() in ('porn', 'hentai', 'sexy') and prob >= 0.5:
+                            is_nsfw = True
+                            break
+
                 print(f"🔍 NSFW check {filename}: is_nsfw={is_nsfw} result={result}")
                 if is_nsfw:
+
+
+
+
                     if os.path.exists(file_path):
                         os.remove(file_path)
                     raise HTTPException(
