@@ -1,8 +1,460 @@
 <!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><title>Admin</title></head>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aphri Admin</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+  .hidden { display: none !important; }
+
+  /* Login */
+  .login-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+  .login-card { background: #1e293b; padding: 40px; border-radius: 16px; width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+  .login-card h1 { font-size: 24px; margin-bottom: 8px; color: #f1f5f9; }
+  .login-card p { color: #94a3b8; margin-bottom: 24px; font-size: 14px; }
+  .login-card input { width: 100%; padding: 14px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; border-radius: 10px; font-size: 15px; margin-bottom: 16px; }
+  .login-card button { width: 100%; padding: 14px; background: #e84393; color: #fff; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .login-card button:hover { background: #c9357c; }
+  .err { color: #f87171; margin-top: 12px; font-size: 14px; }
+
+  /* Header */
+  .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 32px; background: #1e293b; border-bottom: 1px solid #334155; }
+  .header h1 { font-size: 20px; color: #f1f5f9; }
+  .logout { background: #dc2626; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; }
+  .logout:hover { background: #b91c1c; }
+
+  /* Layout */
+  .main { max-width: 1400px; margin: 0 auto; padding: 24px 32px; }
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .tab { padding: 10px 18px; background: #1e293b; color: #cbd5e1; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 14px; }
+  .tab:hover { background: #334155; }
+  .tab.active { background: #e84393; color: #fff; }
+
+  .card { background: #1e293b; border-radius: 16px; padding: 24px; margin-bottom: 20px; }
+  .card h2 { font-size: 18px; margin-bottom: 16px; color: #f1f5f9; padding-bottom: 12px; border-bottom: 1px solid #334155; }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .stat { background: #1e293b; padding: 20px; border-radius: 14px; border-left: 4px solid #e84393; }
+  .stat-num { font-size: 28px; font-weight: 800; color: #f1f5f9; }
+  .stat-lbl { font-size: 13px; color: #94a3b8; margin-top: 6px; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 12px; text-align: left; border-bottom: 1px solid #334155; font-size: 14px; }
+  th { background: #0f172a; color: #cbd5e1; font-weight: 600; }
+  tr:hover td { background: #243244; }
+
+  /* Buttons */
+  .btn { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; margin-right: 6px; }
+  .btn-ban { background: #dc2626; color: #fff; }
+  .btn-unban { background: #16a34a; color: #fff; }
+  .btn-cred { background: #3b82f6; color: #fff; }
+  .btn-dismiss { background: #64748b; color: #fff; }
+  .btn-warn { background: #f59e0b; color: #fff; }
+  .btn-unmatch { background: #dc2626; color: #fff; }
+
+  .search { width: 100%; max-width: 400px; padding: 10px 14px; border: 1px solid #334155; background: #0f172a; color: #e2e8f0; border-radius: 10px; margin-bottom: 16px; font-size: 14px; }
+  .empty { color: #64748b; padding: 20px; text-align: center; font-style: italic; }
+
+  .badge { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+  .badge-active { background: #166534; color: #86efac; }
+  .badge-banned { background: #7f1d1d; color: #fca5a5; }
+  .badge-pending { background: #78350f; color: #fcd34d; }
+  .badge-ok { background: #1e3a8a; color: #93c5fd; }
+</style>
+</head>
 <body>
-<h1>Admin dashboard placeholder</h1>
-<p>Coming next.</p>
+
+<!-- LOGIN -->
+<div id="loginWrap" class="login-wrap">
+  <div class="login-card">
+    <h1>🔐 Aphri Admin</h1>
+    <p>Enter admin password to continue.</p>
+    <input type="password" id="pw" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">Login</button>
+    <div id="loginErr" class="err hidden"></div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashWrap" class="hidden">
+  <div class="header">
+    <h1>🛡️ Aphri Admin</h1>
+    <button class="logout" onclick="logout()">Logout</button>
+  </div>
+
+  <div class="main">
+    <div class="stats" id="statsRow">
+      <div class="stat"><div class="stat-num" id="s-users">–</div><div class="stat-lbl">Total Users</div></div>
+      <div class="stat"><div class="stat-num" id="s-active">–</div><div class="stat-lbl">Active Users</div></div>
+      <div class="stat"><div class="stat-num" id="s-matches">–</div><div class="stat-lbl">Matches</div></div>
+      <div class="stat"><div class="stat-num" id="s-real">–</div><div class="stat-lbl">Real Matches</div></div>
+      <div class="stat"><div class="stat-num" id="s-reports">–</div><div class="stat-lbl">Pending Reports</div></div>
+      <div class="stat"><div class="stat-num" id="s-blocks">–</div><div class="stat-lbl">Blocks</div></div>
+      <div class="stat"><div class="stat-num" id="s-nsfw">–</div><div class="stat-lbl">NSFW Rejections</div></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('users', this)">Users</button>
+      <button class="tab" onclick="switchTab('reports', this)">Reports</button>
+      <button class="tab" onclick="switchTab('blocks', this)">Blocks</button>
+      <button class="tab" onclick="switchTab('matches', this)">Real Matches</button>
+      <button class="tab" onclick="switchTab('moderation', this)">Moderation</button>
+      <button class="tab" onclick="switchTab('audit', this)">Audit Log</button>
+    </div>
+
+    <div id="tab-users" class="tab-content">
+      <div class="card">
+        <h2>Users</h2>
+        <input class="search" id="userSearch" placeholder="Search by email or name..." oninput="loadUsers()">
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>Email</th><th>Name</th><th>Status</th><th>Credits</th><th>Created</th><th>Actions</th></tr></thead>
+            <tbody id="usersBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-reports" class="tab-content hidden">
+      <div class="card">
+        <h2>Reports</h2>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>Reporter</th><th>Reported</th><th>Reason</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+            <tbody id="reportsBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-blocks" class="tab-content hidden">
+      <div class="card">
+        <h2>Blocks</h2>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>Blocker</th><th>Blocked</th><th>Created</th></tr></thead>
+            <tbody id="blocksBody"><tr><td colspan="3" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-matches" class="tab-content hidden">
+      <div class="card">
+        <h2>Real Matches</h2>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>User</th><th>Matched With</th><th>Score</th><th>Created</th><th>Actions</th></tr></thead>
+            <tbody id="matchesBody"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-moderation" class="tab-content hidden">
+      <div class="card">
+        <h2>Moderation Log (NSFW rejections)</h2>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>User</th><th>Kind</th><th>Details</th><th>Created</th></tr></thead>
+            <tbody id="modBody"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-audit" class="tab-content hidden">
+      <div class="card">
+        <h2>Admin Audit Log</h2>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>Action</th><th>Target</th><th>Details</th><th>Created</th></tr></thead>
+            <tbody id="auditBody"><tr><td colspan="4" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API = "/api/admin";
+let TOKEN = localStorage.getItem("aphri_admin_token") || "";
+
+// ============================================================
+// AUTH
+// ============================================================
+async function doLogin() {
+  const pw = document.getElementById("pw").value;
+  const err = document.getElementById("loginErr");
+  err.classList.add("hidden");
+  try {
+    const r = await fetch(`${API}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pw })
+    });
+    const data = await r.json();
+    if (!r.ok) { err.textContent = data.detail || "Login failed"; err.classList.remove("hidden"); return; }
+    TOKEN = data.access_token;
+    localStorage.setItem("aphri_admin_token", TOKEN);
+    showDash();
+  } catch (e) {
+    err.textContent = "Network error"; err.classList.remove("hidden");
+  }
+}
+
+function logout() {
+  TOKEN = "";
+  localStorage.removeItem("aphri_admin_token");
+  document.getElementById("dashWrap").classList.add("hidden");
+  document.getElementById("loginWrap").classList.remove("hidden");
+}
+
+async function api(path, opts = {}) {
+  opts.headers = Object.assign({}, opts.headers || {}, { "Authorization": `Bearer ${TOKEN}` });
+  if (opts.body && typeof opts.body !== "string") {
+    opts.headers["Content-Type"] = "application/json";
+    opts.body = JSON.stringify(opts.body);
+  }
+  const r = await fetch(`${API}${path}`, opts);
+  if (r.status === 401) { logout(); throw new Error("Session expired"); }
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.detail || "Request failed");
+  return data;
+}
+
+// ============================================================
+// BOOT
+// ============================================================
+function showDash() {
+  document.getElementById("loginWrap").classList.add("hidden");
+  document.getElementById("dashWrap").classList.remove("hidden");
+  loadStats();
+  loadUsers();
+}
+
+if (TOKEN) {
+  api("/stats").then(showDash).catch(() => logout());
+}
+
+// ============================================================
+// TABS
+// ============================================================
+function switchTab(name, btn) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach(t => t.classList.add("hidden"));
+  btn.classList.add("active");
+  document.getElementById(`tab-${name}`).classList.remove("hidden");
+
+  if (name === "users") loadUsers();
+  if (name === "reports") loadReports();
+  if (name === "blocks") loadBlocks();
+  if (name === "matches") loadMatches();
+  if (name === "moderation") loadModeration();
+  if (name === "audit") loadAudit();
+}
+
+// ============================================================
+// STATS
+// ============================================================
+async function loadStats() {
+  try {
+    const s = await api("/stats");
+    document.getElementById("s-users").textContent = s.total_users;
+    document.getElementById("s-active").textContent = s.active_users;
+    document.getElementById("s-matches").textContent = s.total_matches;
+    document.getElementById("s-real").textContent = s.real_matches;
+    document.getElementById("s-reports").textContent = s.pending_reports;
+    document.getElementById("s-blocks").textContent = s.total_blocks;
+    document.getElementById("s-nsfw").textContent = s.nsfw_rejections;
+  } catch (e) { console.error(e); }
+}
+
+// ============================================================
+// USERS
+// ============================================================
+async function loadUsers() {
+  const body = document.getElementById("usersBody");
+  body.innerHTML = `<tr><td colspan="6" class="empty">Loading…</td></tr>`;
+  const q = document.getElementById("userSearch").value.trim();
+  try {
+    const list = await api(`/users${q ? `?search=${encodeURIComponent(q)}` : ""}`);
+    if (!list.length) { body.innerHTML = `<tr><td colspan="6" class="empty">No users</td></tr>`; return; }
+    body.innerHTML = list.map(u => `
+      <tr>
+        <td>${esc(u.email)}</td>
+        <td>${esc((u.first_name||"")+" "+(u.last_name||""))}</td>
+        <td>${u.is_active ? '<span class="badge badge-active">Active</span>' : '<span class="badge badge-banned">Banned</span>'}</td>
+        <td>${u.credits_remaining ?? 0}</td>
+        <td>${fmt(u.created_at)}</td>
+        <td>
+          ${u.is_active
+            ? `<button class="btn btn-ban" onclick="banUser('${u.id}')">Ban</button>`
+            : `<button class="btn btn-unban" onclick="unbanUser('${u.id}')">Unban</button>`}
+          <button class="btn btn-cred" onclick="adjustCredits('${u.id}', '${esc(u.email)}')">Credits</button>
+        </td>
+      </tr>
+    `).join("");
+  } catch (e) { body.innerHTML = `<tr><td colspan="6" class="empty">${esc(e.message)}</td></tr>`; }
+}
+
+async function banUser(id) {
+  if (!confirm("Ban this user?")) return;
+  await api(`/users/${id}/ban`, { method: "PUT" });
+  loadUsers(); loadStats();
+}
+async function unbanUser(id) {
+  await api(`/users/${id}/unban`, { method: "PUT" });
+  loadUsers(); loadStats();
+}
+async function adjustCredits(id, email) {
+  const v = prompt(`Adjust credits for ${email}\nEnter a positive or negative number (e.g. 50 or -20):`);
+  if (v === null) return;
+  const delta = parseInt(v, 10);
+  if (isNaN(delta) || delta === 0) { alert("Invalid number"); return; }
+  try {
+    await api(`/users/${id}/credits`, { method: "PUT", body: { delta } });
+    loadUsers();
+  } catch (e) { alert(e.message); }
+}
+
+// ============================================================
+// REPORTS
+// ============================================================
+async function loadReports() {
+  const body = document.getElementById("reportsBody");
+  body.innerHTML = `<tr><td colspan="6" class="empty">Loading…</td></tr>`;
+  try {
+    const list = await api("/reports");
+    if (!list.length) { body.innerHTML = `<tr><td colspan="6" class="empty">No reports</td></tr>`; return; }
+    body.innerHTML = list.map(r => `
+      <tr>
+        <td>${esc(r.reporter?.email || "–")}</td>
+        <td>${esc(r.reported?.email || "–")}</td>
+        <td>${esc(r.reason || "")}</td>
+        <td>${badgeReport(r.status)}</td>
+        <td>${fmt(r.created_at)}</td>
+        <td>
+          ${r.status === "pending" ? `
+            <button class="btn btn-dismiss" onclick="actReport('${r.id}','dismiss')">Dismiss</button>
+            <button class="btn btn-warn" onclick="actReport('${r.id}','warn')">Warn</button>
+            <button class="btn btn-ban" onclick="actReport('${r.id}','ban')">Ban</button>
+          ` : "–"}
+        </td>
+      </tr>
+    `).join("");
+  } catch (e) { body.innerHTML = `<tr><td colspan="6" class="empty">${esc(e.message)}</td></tr>`; }
+}
+async function actReport(id, action) {
+  if (!confirm(`${action} this report?`)) return;
+  await api(`/reports/${id}/action`, { method: "PUT", body: { action } });
+  loadReports(); loadStats();
+}
+
+// ============================================================
+// BLOCKS
+// ============================================================
+async function loadBlocks() {
+  const body = document.getElementById("blocksBody");
+  body.innerHTML = `<tr><td colspan="3" class="empty">Loading…</td></tr>`;
+  try {
+    const list = await api("/blocks");
+    if (!list.length) { body.innerHTML = `<tr><td colspan="3" class="empty">No blocks</td></tr>`; return; }
+    body.innerHTML = list.map(b => `
+      <tr>
+        <td>${esc(b.blocker?.email || "–")}</td>
+        <td>${esc(b.blocked?.email || "–")}</td>
+        <td>${fmt(b.created_at)}</td>
+      </tr>
+    `).join("");
+  } catch (e) { body.innerHTML = `<tr><td colspan="3" class="empty">${esc(e.message)}</td></tr>`; }
+}
+
+// ============================================================
+// MATCHES
+// ============================================================
+async function loadMatches() {
+  const body = document.getElementById("matchesBody");
+  body.innerHTML = `<tr><td colspan="5" class="empty">Loading…</td></tr>`;
+  try {
+    const list = await api("/matches");
+    if (!list.length) { body.innerHTML = `<tr><td colspan="5" class="empty">No real matches</td></tr>`; return; }
+    body.innerHTML = list.map(m => `
+      <tr>
+        <td>${esc(m.user?.email || "–")}</td>
+        <td>${esc(m.matched_user?.email || "–")}</td>
+        <td>${m.final_score != null ? Math.round(m.final_score) + "%" : "–"}</td>
+        <td>${fmt(m.created_at)}</td>
+        <td><button class="btn btn-unmatch" onclick="unmatch('${m.id}')">Unmatch</button></td>
+      </tr>
+    `).join("");
+  } catch (e) { body.innerHTML = `<tr><td colspan="5" class="empty">${esc(e.message)}</td></tr>`; }
+}
+async function unmatch(id) {
+  if (!confirm("Force unmatch these users?")) return;
+  await api(`/matches/${id}`, { method: "DELETE" });
+  loadMatches();
+}
+
+// ============================================================
+// MODERATION
+// ============================================================
+async function loadModeration() {
+  const body = document.getElementById("modBody");
+  body.innerHTML = `<tr><td colspan="4" class="empty">Loading…</td></tr>`;
+  try {
+    const list = await api("/moderation");
+    if (!list.length) { body.innerHTML = `<tr><td colspan="4" class="empty">No moderation events</td></tr>`; return; }
+    body.innerHTML = list.map(m => `
+      <tr>
+        <td>${esc(m.user?.email || "–")}</td>
+        <td>${esc(m.kind)}</td>
+        <td style="font-family:monospace;font-size:12px;">${esc(m.details || "")}</td>
+        <td>${fmt(m.created_at)}</td>
+      </tr>
+    `).join("");
+  } catch (e) { body.innerHTML = `<tr><td colspan="4" class="empty">${esc(e.message)}</td></tr>`; }
+}
+
+// ============================================================
+// AUDIT
+// ============================================================
+async function loadAudit() {
+  const body = document.getElementById("auditBody");
+  body.innerHTML = `<tr><td colspan="4" class="empty">Loading…</td></tr>`;
+  try {
+    const list = await api("/audit");
+    if (!list.length) { body.innerHTML = `<tr><td colspan="4" class="empty">No admin actions yet</td></tr>`; return; }
+    body.innerHTML = list.map(a => `
+      <tr>
+        <td>${esc(a.action)}</td>
+        <td>${esc(a.target_type || "–")}:${esc((a.target_id || "").slice(0, 8))}</td>
+        <td style="font-family:monospace;font-size:12px;">${esc(a.details || "")}</td>
+        <td>${fmt(a.created_at)}</td>
+      </tr>
+    `).join("");
+  } catch (e) { body.innerHTML = `<tr><td colspan="4" class="empty">${esc(e.message)}</td></tr>`; }
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function fmt(iso) { if (!iso) return "–"; const d = new Date(iso); return d.toLocaleString(); }
+function badgeReport(status) {
+  if (status === "pending") return '<span class="badge badge-pending">Pending</span>';
+  if (status === "dismissed") return '<span class="badge badge-ok">Dismissed</span>';
+  if (status === "warned") return '<span class="badge badge-pending">Warned</span>';
+  if (status === "actioned") return '<span class="badge badge-banned">Actioned</span>';
+  return esc(status);
+}
+</script>
+
 </body>
 </html>

@@ -38,13 +38,13 @@ from app.models.moderation_log import ModerationLog
 # ============================================================
 # NSFW MODEL PRELOAD
 # ============================================================
-try:
-    from nsfwpy import load_model
-    _nsfw_model = load_model("nsfw_vit_quantized", warmup=True)
-    print("✅ NSFW model preloaded")
-except Exception as e:
-    _nsfw_model = None
-    print(f"⚠️ NSFW preload failed: {e}")
+#try:
+    #from nsfwpy import load_model
+    #_nsfw_model = load_model("nsfw_vit_quantized", warmup=True)
+    #print("✅ NSFW model preloaded")
+#except Exception as e:
+    #_nsfw_model = None
+    #print(f"⚠️ NSFW preload failed: {e}")
 
 # ============================================================
 # CREATE DATABASE TABLES (First run only)
