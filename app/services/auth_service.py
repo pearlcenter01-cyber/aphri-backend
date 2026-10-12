@@ -99,7 +99,7 @@ class AuthService:
                 detail="Email already registered"
             )
         
-        # Convert date_of_birth to datetime if provided
+                # Convert date_of_birth to datetime if provided
         date_of_birth = None
         if user_data.date_of_birth:
             try:
@@ -109,6 +109,24 @@ class AuthService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Invalid date format. Use YYYY-MM-DD"
                 )
+
+        # ✅ Age gate — 18+ only
+        if date_of_birth:
+            today = datetime.utcnow()
+            age = (
+                today.year - date_of_birth.year
+                - ((today.month, today.day) < (date_of_birth.month, date_of_birth.day))
+            )
+            if age < 18:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Sorry, Aphri is only available to users 18 years and older.",
+                )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Date of birth is required.",
+            )
         
         # Create new user
         hashed_password = AuthService.hash_password(user_data.password)
