@@ -125,7 +125,7 @@ COMPATIBILITY_QUESTION_SETS = [
             },
             {
                 "text_en": "How do you handle it when your partner has a secret they weren't ready to share?",
-                "text_am": "አጋርዎ ለመካፈል ያልተዘጋጁበት ምስጢር ሲኖራቸው እንዴት ይይዙታል?",
+                "text_am": "ፍቅረኛዎ አሁን ሊነግሩዎት የማይፈልጉት ሚስጥር እንዳለ ካወቁ ምን ያደርጋሉ?",
                 "options_en": [
                     "I trust them to tell me when they're ready",
                     "I want to know what it is, even if I don't push",
@@ -133,16 +133,16 @@ COMPATIBILITY_QUESTION_SETS = [
                     "I assume it's theirs to keep unless they choose to share",
                 ],
                 "options_am": [
-                    "ዝግጁ ሲሆኑ እንደሚነግሩኝ እተማመናለሁ",
-                    "ምን እንደሆነ ማወቅ እፈልጋለሁ፣ ባልገፋም እንኳ",
-                    "አይረጋጋልኝም — ምስጢሮች ነገሮችን እንድጠራጠር ያደርጉኛል",
-                    "እነሱ ካልመረጡ የእነሱ ነው ብዬ እወስዳለሁ",
+                    "ጊዜው ሲደርስ እንደሚነግረኝ ወይም እንደምትነግረኝ ስለምተማመን አያሳስበኝም።",
+                    "ካልተነገረኝ ብዬ ብዙ መጫን ባልፈልግም፤ ነገሩ ግን ምን እንደሆነ ማወቅ እፈልጋለሁ።",
+                    "ጥሩ ስሜት አይሰማኝም። ሚስጥር ሁሌም እንድጠራጠር ያረገኛል።",
+                    "መናገር ካልፈለገ ወይም ካልፈለገች ብዙም አያሳስበኝም።",
                 ],
                 "method": "Attachment Theory",
             },
             {
                 "text_en": "If you discovered your partner had lied about something small, what would hurt more?",
-                "text_am": "አጋርዎ ስለ አንድ ትንሽ ነገር እንደዋሸ ቢያውቁ፣ የትኛው የበለጠ ያጎዳዎታል?",
+                "text_am": "ፍቅረኛዎ በአንድ አነስ ያለ ጉዳይ እንደዋሸዎት ወይም እንደዋሸችዎት ቢያውቁ ይበልጥ የሚያናድድዎት ምኑ ነው?",
                 "options_en": [
                     "The lie itself",
                     "The fact that they felt they couldn't tell me the truth",
@@ -151,15 +151,15 @@ COMPATIBILITY_QUESTION_SETS = [
                 ],
                 "options_am": [
                     "ውሸቱ ራሱ",
-                    "እውነቱን ሊነግሩኝ አልቻልኩም ብለው ማሰባቸው",
-                    "አላስተውልም ብለው ማሰባቸው",
-                    "ምንም ከመሰማኝ በፊት ለምን እንደሆነ መረዳት እፈልጋለሁ",
+                    "እውነቱን መናገር አልችልም ብለው ማሰባቸው",
+                    "አይታወቅብኝም ብለው ማሰባቸው",
+                    "ምንም ነገር ከመወሰኔ በፊት፣ መጀመርያ ውሸቱን ራሱ ምን እንዳመጣው ማወቅ እፈልጋለሁ።",
                 ],
                 "method": "Gottman Method",
             },
             {
                 "text_en": "How honest are you willing to be about your past with a partner?",
-                "text_am": "ስለ ሕገ-ወጥ ያለፈዎ ከአጋርዎ ጋር ምን ያህል ታማኝ መሆን ይፈልጋሉ?",
+                "text_am": "ለፍቅረኛዎ ያለፈ ህይወትዎን በተመለከተ ምን ያህል ግልጽ መሆን ይችላሉ?",
                 "options_en": [
                     "Fully open — they can ask anything",
                     "Open about what matters, private about the rest",
@@ -167,16 +167,16 @@ COMPATIBILITY_QUESTION_SETS = [
                     "Some things from my past are mine alone",
                 ],
                 "options_am": [
-                    "ሙሉ በሙሉ ግልጽ — ማንኛውንም ሊጠይቁ ይችላሉ",
-                    "አስፈላጊ ስለሆነው ግልጽ፣ ስለ ሌላው ግላዊ",
-                    "ጊዜ በማለፍ አካፍላለሁ፣ እምነት ሲገነባ",
-                    "አንዳንድ ነገሮች ከአለፈው የእኔ ብቻ ናቸው",
+                    "ሙሉ በሙሉ — ማንኛውንም ሊጠይቁ ይችላሉ",
+                    "አስፈላጊ የሆነውን ብቻ መንገር እችላለሁ። ሌላው ግን የግል ጉዳዬ ነው።",
+                    "በሁለታችን መሀል መተማመን እየጎለበተ ሲመጣ ቀስ እያለኩ እናገራለሁ።",
+                    "ያለፈም ቢሆን የማልናገራቸው ነገሮች ይኖሩኛል።",
                 ],
                 "method": "Attachment Theory",
             },
             {
                 "text_en": "If your partner told you something that shook your trust, what would you do?",
-                "text_am": "አጋርዎ እምነትዎን ያናወጠ ነገር ቢነግሩዎ፣ ምን ያደርጋሉ?",
+                "text_am": "ፍቅረኛዎ በእሱ ወይም እሷ ላይ ያለዎትን እምነት የሚያናውጥ ጉዳይ ቢነግሩዎት ምን ያደርጋሉ?",
                 "options_en": [
                     "Talk it through and give them a chance to rebuild",
                     "Need time apart to think, then decide",
@@ -184,10 +184,10 @@ COMPATIBILITY_QUESTION_SETS = [
                     "End it — trust, once broken, doesn't come back for me",
                 ],
                 "options_am": [
-                    "ማውራት እና እንደገና እንዲገነቡ እድል መስጠት",
-                    "ለማሰብ ተለይቶ ጊዜ መውሰድ፣ ከዚያ መወሰን",
-                    "እንደገና ለመተማመን መቸገር፣ ብፈልግም",
-                    "ማቋረጥ — አንዴ የተሰበረ እምነት ለእኔ አይመለስም",
+                    "በደምብ ከተነጋገርንበት በሁዋላ መልሶ መስተካከል ይችል እንደሆን ለማየት አንድ እድል እሰጣለሁ።",
+                    "ለተወሰነ ጊዜ ለብቻዬ መሆንና ከመወሰኔ በፊት በደምብ ማሰብ እመርጣለሁ።",
+                    "ዳግመኛ ለማመን ይከብደኛል። ብፈልግም እንኳን አልችልም።",
+                    "ይበቃኛል። እምነት አንዴ ከተሰበረ አይጠገንም። ከዛ ሰው ጋር ድጋሚ ጊዜ ማጥፋትም አያስፈልግም።",
                 ],
                 "method": "Gottman Method",
             },

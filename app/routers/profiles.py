@@ -164,6 +164,72 @@ async def update_profile(
 
     return {"message": "Profile updated successfully"}
 
+
+import json
+from app.models.match_question_game import MatchQuestionGame
+
+
+@router.get("/my-questions")
+async def get_my_questions(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    questions = []
+    if current_user.custom_questions:
+        try:
+            questions = json.loads(current_user.custom_questions)
+        except Exception:
+            questions = []
+
+    active_game = db.query(MatchQuestionGame).filter(
+        ((MatchQuestionGame.user_id == current_user.id) |
+         (MatchQuestionGame.candidate_id == current_user.id)),
+        MatchQuestionGame.is_complete == False,
+    ).first()
+
+    return {
+        "questions": questions,
+        "can_edit": active_game is None,
+    }
+
+
+@router.put("/my-questions")
+async def update_my_questions(
+    request: Dict[str, Any],
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    questions = request.get("questions")
+    if not isinstance(questions, list) or len(questions) != 3:
+        raise HTTPException(status_code=400, detail="Exactly 3 questions are required")
+    for q in questions:
+        if not isinstance(q, str) or not q.strip():
+            raise HTTPException(status_code=400, detail="Questions cannot be empty")
+        if len(q) > 200:
+            raise HTTPException(status_code=400, detail="Each question must be 200 characters or less")
+
+    active_game = db.query(MatchQuestionGame).filter(
+        ((MatchQuestionGame.user_id == current_user.id) |
+         (MatchQuestionGame.candidate_id == current_user.id)),
+        MatchQuestionGame.is_complete == False,
+    ).first()
+    if active_game:
+        raise HTTPException(status_code=400, detail="You have a game in progress. Finish it before editing your questions.")
+
+    current_user.custom_questions = json.dumps(questions)
+    db.commit()
+
+    return {"questions": questions, "message": "Questions updated"}    
+
+
+
+
+
+
+
+
+
+
 @router.get("/{user_id}")
 async def get_public_profile(
     user_id: str,
@@ -234,3 +300,4 @@ async def get_profile_completeness(
         "completeness_score": score,
         "suggestions": []
     }
+
