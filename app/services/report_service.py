@@ -13,17 +13,14 @@ class ReportService:
     """Service for user reports and blocks"""
     
     @staticmethod
-    def _ensure_uuid(value: str | UUID) -> UUID:
-        """Convert string to UUID if needed, or return UUID as-is"""
-        if isinstance(value, UUID):
-            return value
-        try:
-            return UUID(value)
-        except (ValueError, TypeError):
+    def _ensure_uuid(value) -> str:
+        """IDs in this app are strings. Validate and return as string."""
+        if value is None or value == "":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid UUID format: {value}"
+                detail="Invalid ID",
             )
+        return str(value)
     
     @staticmethod
     def create_report(
