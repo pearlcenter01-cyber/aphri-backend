@@ -221,12 +221,93 @@ async def update_my_questions(
 
     return {"questions": questions, "message": "Questions updated"}    
 
+@router.delete("/me")
+async def delete_my_account(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Permanently delete the current user's account and associated data.
+    """
+    from app.models.photo import Photo
+    from app.models.message import Message
+    from app.models.match import Match
+    from app.models.real_match import RealMatch
+    from app.models.chat_question import ChatQuestion
+    from app.models.match_question_game import MatchQuestionGame
+    from app.models.swipe import Swipe
+    from app.models.block import Block
+    from app.models.report import Report
+    from app.models.profile import Profile
+    from app.models.compatibility import CompatibilitySession, CompatibilityResponse
+    from sqlalchemy import or_, and_
+    import os
+    from app.config import settings
 
+    uid = str(current_user.id)
 
+    # Delete photos from disk
+    photo_dir = os.path.join(settings.DATA_DIR, "photos", uid)
+    if os.path.isdir(photo_dir):
+        for f in os.listdir(photo_dir):
+            try:
+                os.remove(os.path.join(photo_dir, f))
+            except Exception:
+                pass
+        try:
+            os.rmdir(photo_dir)
+        except Exception:
+            pass
 
+    # Delete rows
+    db.query(Photo).filter(Photo.user_id == uid).delete(synchronize_session=False)
+    db.query(Profile).filter(Profile.user_id == uid).delete(synchronize_session=False)
 
+    db.query(Message).filter(
+        or_(Message.sender_id == uid, Message.receiver_id == uid)
+    ).delete(synchronize_session=False)
 
+    db.query(Match).filter(
+        or_(Match.user_1_id == uid, Match.user_2_id == uid)
+    ).delete(synchronize_session=False)
 
+    db.query(RealMatch).filter(
+        or_(RealMatch.user_id == uid, RealMatch.matched_user_id == uid)
+    ).delete(synchronize_session=False)
+
+    db.query(ChatQuestion).filter(
+        or_(ChatQuestion.user_id == uid, ChatQuestion.candidate_id == uid)
+    ).delete(synchronize_session=False)
+
+    db.query(MatchQuestionGame).filter(
+        or_(MatchQuestionGame.user_id == uid, MatchQuestionGame.candidate_id == uid)
+    ).delete(synchronize_session=False)
+
+    db.query(Swipe).filter(
+        or_(Swipe.swiper_id == uid, Swipe.swiped_id == uid)
+    ).delete(synchronize_session=False)
+
+    db.query(Block).filter(
+        or_(Block.blocker_id == uid, Block.blocked_id == uid)
+    ).delete(synchronize_session=False)
+
+    db.query(Report).filter(
+        or_(Report.reporter_id == uid, Report.reported_id == uid)
+    ).delete(synchronize_session=False)
+
+    db.query(CompatibilityResponse).filter(
+        CompatibilityResponse.user_id == uid
+    ).delete(synchronize_session=False)
+
+    db.query(CompatibilitySession).filter(
+        or_(CompatibilitySession.user_id == uid, CompatibilitySession.partner_id == uid)
+    ).delete(synchronize_session=False)
+
+    # Delete the user
+    db.delete(current_user)
+    db.commit()
+
+    return {"message": "Account deleted"}
 
 
 
