@@ -379,7 +379,6 @@ class AuthService:
         user = db.query(User).filter(User.id == user_id).first()
         
         if not user:
-            logger.error(f"❌ User not found: {user_id}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found"
