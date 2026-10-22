@@ -469,15 +469,14 @@ class QuestionGameService:
                     user_1_swiped_at=now,
                     user_2_swiped_at=now,
                     matched_at=now,
-                    chat_unlocked_at=now,
+                    # chat_unlocked_at is intentionally NULL — frontend unlocks when user picks an option
                     is_active=True,
                     initiator_id=game.user_id,
                 )
                 db.add(match)
-                print(f"✅ Match row CREATED: {match.id}")
+                print(f"✅ Match row CREATED (chat locked): {match.id}")
             else:
-                match.chat_unlocked_at = now
-                print(f"🔓 Chat unlocked for existing match: {match.id}")
+                print(f"✅ Existing match found (chat remains locked): {match.id}")
 
             mirror_game = db.query(MatchQuestionGame).filter(
                 MatchQuestionGame.user_id == game.candidate_id,

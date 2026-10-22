@@ -994,7 +994,7 @@ async def start_chat(
         user_1_swiped_at=now,
         user_2_swiped_at=now,
         matched_at=now,
-        chat_unlocked_at=now,
+        # chat_unlocked_at is intentionally NULL — frontend unlocks when user picks an option
         is_active=True,
         initiator_id=current_user.id,
     )
