@@ -103,16 +103,80 @@ class AdminService:
         }
 
     @staticmethod
+    
     def get_user_detail(db: Session, user_id: str) -> Dict[str, Any]:
         u = db.query(User).filter(User.id == user_id).first()
         if not u:
             raise HTTPException(status_code=404, detail="User not found")
+
         d = AdminService._user_summary(u)
         d["last_active_at"] = u.last_active_at.isoformat() if getattr(u, "last_active_at", None) else None
-        d["looking_for"] = getattr(u, "looking_for", None)
-        d["religion"] = getattr(u, "religion", None)
-        d["city"] = getattr(u, "city", None)
         d["bio"] = None
+
+        # ---- Profile details ----
+        d["date_of_birth"] = u.date_of_birth.isoformat() if getattr(u, "date_of_birth", None) else None
+        d["looking_for"] = getattr(u, "looking_for", None)
+        d["looking_for_gender"] = getattr(u, "looking_for_gender", None)
+        d["looking_for_age_min"] = getattr(u, "looking_for_age_min", None)
+        d["looking_for_age_max"] = getattr(u, "looking_for_age_max", None)
+        d["religion"] = getattr(u, "religion", None)
+        d["religion_preferences"] = getattr(u, "religion_preferences", None)
+        d["city"] = getattr(u, "city", None)
+        d["latitude"] = getattr(u, "latitude", None)
+        d["longitude"] = getattr(u, "longitude", None)
+        d["is_registration_complete"] = getattr(u, "is_registration_complete", False)
+
+        # ---- 8 Compatibility Answers ----
+        d["q1"] = getattr(u, "q1_core_need", None)
+        d["q2"] = getattr(u, "q2_sex_intimacy", None)
+        d["q3"] = getattr(u, "q3_conflict", None)
+        d["q4"] = getattr(u, "q4_success_response", None)
+        d["q5"] = getattr(u, "q5_gender_roles", None)
+        d["q6"] = getattr(u, "q6_religion", None)
+        d["q7"] = getattr(u, "q7_crisis_response", None)
+        d["q8"] = getattr(u, "q8_emotional_maturity", None)
+
+        # ---- 3 Custom Questions ----
+        raw_custom = getattr(u, "custom_questions", None)
+        if raw_custom:
+            try:
+                d["custom_questions"] = json.loads(raw_custom) if isinstance(raw_custom, str) else raw_custom
+            except Exception:
+                d["custom_questions"] = [raw_custom]
+        else:
+            d["custom_questions"] = []
+
+        # ---- Photos ----
+        from app.models.photo import Photo
+        photos = db.query(Photo).filter(Photo.user_id == u.id).all()
+        d["photos"] = [
+            {
+                "id": str(p.id),
+                "url": getattr(p, "url_full", None) or getattr(p, "url_thumbnail", None),
+                "thumbnail": getattr(p, "url_thumbnail", None),
+                "is_primary": getattr(p, "is_primary", False),
+            }
+            for p in photos
+            if getattr(p, "url_full", None) or getattr(p, "url_thumbnail", None)
+        ]
+
+        # ---- Real matches ----
+        real_matches = db.query(RealMatch).filter(
+            or_(RealMatch.user_id == u.id, RealMatch.matched_user_id == u.id)
+        ).all()
+        match_list = []
+        for rm in real_matches:
+            other_id = rm.matched_user_id if str(rm.user_id) == str(u.id) else rm.user_id
+            other = db.query(User).filter(User.id == other_id).first()
+            match_list.append({
+                "match_id": str(rm.id),
+                "other_user_id": str(other_id),
+                "other_email": other.email if other else None,
+                "final_score": rm.final_score,
+                "created_at": rm.created_at.isoformat() if rm.created_at else None,
+            })
+        d["real_matches"] = match_list
+
         return d
 
     @staticmethod

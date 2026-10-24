@@ -64,6 +64,53 @@
   .badge-banned { background: #7f1d1d; color: #fca5a5; }
   .badge-pending { background: #78350f; color: #fcd34d; }
   .badge-ok { background: #1e3a8a; color: #93c5fd; }
+  .user-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  padding: 16px;
+  background: #0f172a;
+  border-radius: 12px;
+  margin: 8px 0;
+}
+.user-details .section {
+  background: #1e293b;
+  padding: 16px;
+  border-radius: 10px;
+  border-left: 3px solid #e84393;
+}
+.user-details .section h4 {
+  font-size: 12px;
+  font-weight: 700;
+  color: #e84393;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #334155;
+}
+.user-details .section p {
+  font-size: 13px;
+  color: #cbd5e1;
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+.user-details .section p strong { color: #94a3b8; font-weight: 600; }
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+.photo-grid img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #334155;
+}
+
+
 </style>
 </head>
 <body>
@@ -106,18 +153,27 @@
       <button class="tab" onclick="switchTab('audit', this)">Audit Log</button>
     </div>
 
-    <div id="tab-users" class="tab-content">
-      <div class="card">
-        <h2>Users</h2>
-        <input class="search" id="userSearch" placeholder="Search by email or name..." oninput="loadUsers()">
-        <div style="overflow-x:auto;">
-          <table>
-            <thead><tr><th>Email</th><th>Phone</th><th>Name</th><th>Status</th><th>Credits</th><th>Created</th><th>Actions</th></tr></thead>
-            <tbody id="usersBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
-          </table>
-        </div>
-      </div>
+  <div id="tab-users" class="tab-content">
+  <div class="card">
+    <h2>Users</h2>
+    <input class="search" id="userSearch" placeholder="Search by email or name..." oninput="loadUsers()">
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Credits</th>
+            <th>Details</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="usersBody"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+      </table>
     </div>
+  </div>
+</div>
 
     <div id="tab-reports" class="tab-content hidden">
       <div class="card">
@@ -281,19 +337,25 @@ async function loadStats() {
 // ============================================================
 async function loadUsers() {
   const body = document.getElementById("usersBody");
-  body.innerHTML = `<tr><td colspan="7" class="empty">Loading…</td></tr>`;
+  body.innerHTML = `<tr><td colspan="6" class="empty">Loading…</td></tr>`;
   const q = document.getElementById("userSearch").value.trim();
   try {
     const list = await api(`/users${q ? `?search=${encodeURIComponent(q)}` : ""}`);
-        if (!list.length) { body.innerHTML = `<tr><td colspan="7" class="empty">No users</td></tr>`; return; }
-        body.innerHTML = list.map(u => `
+    if (!list.length) {
+      body.innerHTML = `<tr><td colspan="6" class="empty">No users</td></tr>`;
+      return;
+    }
+    body.innerHTML = list.map(u => `
       <tr>
         <td>${esc(u.email)}</td>
-        <td>${esc(u.phone_number || "–")}</td>
-        <td>${esc((u.first_name||"")+" "+(u.last_name||""))}</td>
-        <td>${u.is_active ? '<span class="badge badge-active">Active</span>' : '<span class="badge badge-banned">Banned</span>'}</td>
+        <td>${esc((u.first_name || "") + " " + (u.last_name || ""))}</td>
+        <td>${u.is_active
+          ? '<span class="badge badge-active">Active</span>'
+          : '<span class="badge badge-banned">Banned</span>'}</td>
         <td>${u.credits_remaining ?? 0}</td>
-        <td>${fmt(u.created_at)}</td>
+        <td>
+          <button class="btn btn-cred" onclick="toggleDetails('${u.id}')">Show</button>
+        </td>
         <td>
           ${u.is_active
             ? `<button class="btn btn-ban" onclick="banUser('${u.id}')">Ban</button>`
@@ -301,9 +363,101 @@ async function loadUsers() {
           <button class="btn btn-cred" onclick="adjustCredits('${u.id}', '${esc(u.email)}')">Credits</button>
         </td>
       </tr>
+      <tr id="details-${u.id}" class="hidden">
+        <td colspan="6">
+          <div class="user-details">Loading…</div>
+        </td>
+      </tr>
     `).join("");
-    } catch (e) { body.innerHTML = `<tr><td colspan="7" class="empty">${esc(e.message)}</td></tr>`; }
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="6" class="empty">${esc(e.message)}</td></tr>`;
+  }
+}
 
+async function toggleDetails(id) {
+  const row = document.getElementById(`details-${id}`);
+  if (!row) return;
+  if (!row.classList.contains("hidden")) {
+    row.classList.add("hidden");
+    return;
+  }
+  row.classList.remove("hidden");
+  const container = row.querySelector(".user-details");
+  container.innerHTML = "<p class='empty'>Loading…</p>";
+  try {
+    const u = await api(`/users/${id}`);
+    container.innerHTML = buildDetailsHTML(u);
+  } catch (e) {
+    container.innerHTML = `<p class='empty'>${esc(e.message)}</p>`;
+  }
+}
+
+function buildDetailsHTML(u) {
+  const qLabels = {
+    q1: "Q1 – Core Need",
+    q2: "Q2 – Sex & Intimacy",
+    q3: "Q3 – Conflict",
+    q4: "Q4 – Success",
+    q5: "Q5 – Gender Roles",
+    q6: "Q6 – Religion",
+    q7: "Q7 – Crisis",
+    q8: "Q8 – Emotional Maturity",
+  };
+  const customs = Array.isArray(u.custom_questions) ? u.custom_questions : [];
+  const photos = Array.isArray(u.photos) ? u.photos : [];
+  const matches = Array.isArray(u.real_matches) ? u.real_matches : [];
+
+  return `
+    <div class="section">
+      <h4>Basic Info</h4>
+      <p><strong>Gender:</strong> ${esc(u.gender || "–")}</p>
+      <p><strong>Date of Birth:</strong> ${esc(u.date_of_birth || "–")}</p>
+      <p><strong>City:</strong> ${esc(u.city || "–")}</p>
+      <p><strong>Subscription:</strong> ${esc(u.subscription_status || "–")}</p>
+      <p><strong>Registration Complete:</strong> ${u.is_registration_complete ? "✅ Yes" : "❌ No"}</p>
+    </div>
+
+    <div class="section">
+      <h4>Preferences</h4>
+      <p><strong>Looking For:</strong> ${esc(u.looking_for || "–")}</p>
+      <p><strong>Looking For Gender:</strong> ${esc(u.looking_for_gender || "–")}</p>
+      <p><strong>Age Range:</strong> ${u.looking_for_age_min ?? "–"} – ${u.looking_for_age_max ?? "–"}</p>
+      <p><strong>Religion:</strong> ${esc(u.religion || "–")}</p>
+      <p><strong>Open to:</strong> ${esc(u.religion_preferences || "–")}</p>
+    </div>
+
+    <div class="section">
+      <h4>8 Compatibility Answers</h4>
+      ${Object.entries(qLabels).map(([k, label]) =>
+        `<p><strong>${label}:</strong> ${esc(u[k] || "–")}</p>`
+      ).join("")}
+    </div>
+
+    <div class="section">
+      <h4>3 Custom Questions</h4>
+      ${customs.length
+        ? customs.map((q, i) => `<p><strong>${i + 1}.</strong> ${esc(q)}</p>`).join("")
+        : "<p class='empty'>No custom questions</p>"}
+    </div>
+
+    <div class="section">
+      <h4>Photos (${photos.length})</h4>
+      <div class="photo-grid">
+        ${photos.length
+          ? photos.map(p => `<img src="${esc(p.url || p.thumbnail)}" />`).join("")
+          : "<p class='empty'>No photos uploaded</p>"}
+      </div>
+    </div>
+
+    <div class="section">
+      <h4>Real Matches (${matches.length})</h4>
+      ${matches.length
+        ? matches.map(m =>
+            `<p><strong>${esc(m.other_email || "–")}</strong> — Score: ${m.final_score != null ? Math.round(m.final_score) + "%" : "–"}</p>`
+          ).join("")
+        : "<p class='empty'>No real matches</p>"}
+    </div>
+  `;
 }
 
 async function banUser(id) {
