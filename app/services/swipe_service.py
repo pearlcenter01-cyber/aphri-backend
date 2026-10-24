@@ -82,68 +82,104 @@ class SwipeService:
     
     @staticmethod
     def calculate_8q_score(user1: User, user2: User) -> dict:
-        """
-        Calculate score from 8 compatibility questions
-        """
-        # Define weights for each question (1-3)
-        weights = {
-            'q1': 3,  # Core Need - Fundamental
-            'q2': 3,  # Sex & Intimacy - Major dealbreaker
-            'q3': 2,  # Conflict Style - Important
-            'q4': 2,  # Success Response - Important
-            'q5': 3,  # Gender Roles - Fundamental
-            'q6': 3,  # Religion - Fundamental
-            'q7': 2,  # Crisis Response - Important
-            'q8': 2,  # Emotional Maturity - Important
+        weights = {'q1': 3, 'q2': 3, 'q3': 2, 'q4': 2, 'q5': 3, 'q6': 3, 'q7': 2, 'q8': 2}
+
+        LETTERS = {
+            'q1': {
+                'Trust and honesty': 'A',
+                'Stability and security': 'B',
+                'Stability and peace of mind': 'B',
+                'Fun, playfulness and daily joy': 'C',
+                'Overcoming challenges and growing together': 'D',
+            },
+            'q2': {
+                'It is crucially important and I believe most relationship problems arise from sexual incompatibility': 'A',
+                'Emotional connection is priority and I could stay happy even if there are problems with incompatibility': 'B',
+                'Emotional connection matters more': 'B',
+                'Emotional connection matters more; I could be happy even with some incompatibility': 'B',
+                'Not a priority for me': 'C',
+            },
+            'q3': {
+                'I say it directly': 'A',
+                'I say it directly without wasting time': 'A',
+                'Tell them directly': 'A',
+                "I go silent and don't want to say a word": 'B',
+                'Shut down and go quiet': 'B',
+                'Need time to process before talking': 'C',
+            },
+            'q4': {
+                'I would be very happy': 'A',
+                "I would be very happy and I'd feel they deserve that": 'B',
+                'I would be proud of them and be delighted that I am also part of it': 'C',
+                "I'm happy for them, but it makes me think about my own goals": 'D',
+            },
+            'q5': {
+                'My husband is my king': 'A',
+                'The husband is the head of his wife': 'A',
+                'There should be a distinct role for both and the husband is not necessarily superior': 'B',
+                'Both should have their own role': 'B',
+            },
+            'q6': {
+                "It's a big part of my life": 'A',
+                'It is a big part of my life': 'A',
+                "I'm spiritual but not religious": 'B',
+                'Spiritual but not religious': 'B',
+                "It's not important to me": 'C',
+                'Not that important': 'C',
+            },
+            'q7': {
+                'I pray hard and believe God will resolve the issue': 'A',
+                'I pray and believe God will resolve it': 'A',
+                'ጸሎት አደርጋለሁ። እግዚአብሔር ሁሉን እንደሚፈታና እንደሚያሳልፍ አምናለሁ።': 'A',
+                'I work hard and try to find the way out myself': 'B',
+                'I work hard and try to find a way': 'B',
+            },
+            'q8': {
+                'I admit it quickly and apologize': 'A',
+                'I need time before admitting it': 'B',
+                'I need time to process before I can admit it': 'B',
+            },
         }
-        
-        # Get answers
+
+        def canon(q, v):
+            if not v:
+                return None
+            return LETTERS.get(q, {}).get(v.strip(), v.strip())
+
         a1 = user1.get_compatibility_answers()
         a2 = user2.get_compatibility_answers()
-        
+
         total_weight = 0
         weighted_matches = 0
         breakdown = {}
-        
+
         for q, weight in weights.items():
             total_weight += weight
-            
-            if a1.get(q) and a2.get(q):
-                # Perfect match
-                if a1[q] == a2[q]:
-                    weighted_matches += weight
-                    breakdown[q] = {'match': True, 'weight': weight, 'score': weight}
-                # Partial match patterns
-                elif q == 'q1':  # Core Need
-                    if (a1[q] == 'trust_honesty' and a2[q] == 'stability_security') or \
-                       (a1[q] == 'stability_security' and a2[q] == 'trust_honesty'):
-                        weighted_matches += weight * 0.7
-                        breakdown[q] = {'match': 'partial', 'weight': weight, 'score': weight * 0.7}
-                    elif (a1[q] == 'fun_excitement' and a2[q] == 'growth_challenge') or \
-                         (a1[q] == 'growth_challenge' and a2[q] == 'fun_excitement'):
-                        weighted_matches += weight * 0.7
-                        breakdown[q] = {'match': 'partial', 'weight': weight, 'score': weight * 0.7}
-                    else:
-                        breakdown[q] = {'match': False, 'weight': weight, 'score': 0}
-                elif q == 'q6':  # Religion
-                    if (a1[q] == 'big_part' and a2[q] == 'spiritual') or \
-                       (a1[q] == 'spiritual' and a2[q] == 'big_part'):
-                        weighted_matches += weight * 0.5
-                        breakdown[q] = {'match': 'partial', 'weight': weight, 'score': weight * 0.5}
-                    else:
-                        breakdown[q] = {'match': False, 'weight': weight, 'score': 0}
+            v1 = canon(q, a1.get(q))
+            v2 = canon(q, a2.get(q))
+
+            if not v1 or not v2:
+                breakdown[q] = {'match': False, 'weight': weight, 'score': 0}
+                continue
+
+            if v1 == v2:
+                weighted_matches += weight
+                breakdown[q] = {'match': True, 'weight': weight, 'score': weight}
+            else:
+                partial = False
+                if q == 'q1' and {v1, v2} in ({'A', 'B'}, {'C', 'D'}):
+                    partial = True
+                elif q == 'q6' and {v1, v2} == {'A', 'B'}:
+                    partial = True
+
+                if partial:
+                    weighted_matches += weight * 0.7
+                    breakdown[q] = {'match': 'partial', 'weight': weight, 'score': weight * 0.7}
                 else:
                     breakdown[q] = {'match': False, 'weight': weight, 'score': 0}
-            else:
-                breakdown[q] = {'match': False, 'weight': weight, 'score': 0}
-        
-        # Calculate percentage
-        score_percentage = int((weighted_matches / total_weight) * 100) if total_weight > 0 else 0
-        
-        return {
-            'score': score_percentage,
-            'breakdown': breakdown
-        }
+
+        score = int((weighted_matches / total_weight) * 100) if total_weight > 0 else 0
+        return {'score': score, 'breakdown': breakdown}
     
     @staticmethod
     def calculate_custom_score(user1: User, user2: User) -> dict:
