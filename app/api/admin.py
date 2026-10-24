@@ -98,6 +98,14 @@ async def adjust_credits(
     return AdminService.adjust_credits(db, user_id, delta)
 
 
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: str,
+    db: Session = Depends(get_db),
+    _: bool = Depends(require_admin),
+):
+    return AdminService.delete_user(db, user_id)
+
 # ============================================================
 # REPORTS
 # ============================================================

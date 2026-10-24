@@ -118,6 +118,7 @@ class User(Base):
     # ACCOUNT STATUS
     # ============================================================
     is_active = Column(Boolean, default=True)
+    is_deleted = Column(Boolean, default=False, nullable=False) 
     is_verified = Column(Boolean, default=False)
     is_online = Column(Boolean, default=False)
     last_active_at = Column(DateTime, default=func.now(), onupdate=func.now())

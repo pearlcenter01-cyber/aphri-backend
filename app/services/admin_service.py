@@ -73,7 +73,7 @@ class AdminService:
         limit: int = 50,
         offset: int = 0,
     ) -> List[Dict[str, Any]]:
-        query = db.query(User)
+        query = db.query(User).filter(User.is_deleted == False)
         if search:
             term = f"%{search.lower()}%"
             query = query.filter(
@@ -213,6 +213,46 @@ class AdminService:
             details={"delta": delta, "from": current, "to": new_val},
         )
         return AdminService._user_summary(u)
+
+
+    @staticmethod
+    def delete_user(db: Session, user_id: str) -> Dict[str, Any]:
+        u = db.query(User).filter(User.id == user_id).first()
+        if not u:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Mark as deleted (do NOT change email — register logic needs to find it)
+        u.is_deleted = True
+        u.is_active = False
+        u.first_name = "Deleted"
+        u.last_name = "User"
+        u.phone_number = None
+        u.city = None
+        u.latitude = None
+        u.longitude = None
+        u.custom_questions = None
+        u.q1_core_need = None
+        u.q2_sex_intimacy = None
+        u.q3_conflict = None
+        u.q4_success_response = None
+        u.q5_gender_roles = None
+        u.q6_religion = None
+        u.q7_crisis_response = None
+        u.q8_emotional_maturity = None
+        db.commit()
+
+        # Deactivate all their matches
+        db.query(Match).filter(
+            or_(Match.user_1_id == user_id, Match.user_2_id == user_id)
+        ).update({"is_active": False}, synchronize_session=False)
+        db.commit()
+
+        AdminService.log_action(
+            db, action="delete_user", target_type="user", target_id=user_id
+        )
+        return {"ok": True, "user_id": user_id, "deleted": True}    
+
+
 
     # ============================================================
     # REPORTS

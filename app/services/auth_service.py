@@ -89,11 +89,70 @@ class AuthService:
             return None
     
     @staticmethod
+        
     async def register_user(db: Session, user_data: UserRegister) -> dict:
         """Register a new user"""
         # Check if user already exists
         existing_user = db.query(User).filter(User.email == user_data.email).first()
         if existing_user:
+            # BANNED (not deleted) → never allow re-registration
+            if not existing_user.is_active and not existing_user.is_deleted:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="This account has been banned. Contact support if you believe this is a mistake."
+                )
+
+            # SOFT-DELETED → revive the row as a fresh user
+            if existing_user.is_deleted:
+                existing_user.is_deleted = False
+                existing_user.is_active = True
+                existing_user.first_name = user_data.first_name
+                existing_user.last_name = user_data.last_name
+                existing_user.password_hash = AuthService.hash_password(user_data.password)
+                existing_user.phone = user_data.phone
+                existing_user.date_of_birth = (
+                    datetime.strptime(user_data.date_of_birth, "%Y-%m-%d")
+                    if user_data.date_of_birth else None
+                )
+                existing_user.gender = user_data.gender
+                existing_user.looking_for_gender = user_data.looking_for_gender
+                existing_user.looking_for = user_data.looking_for
+                existing_user.vibe = user_data.vibe if hasattr(user_data, 'vibe') else None
+                existing_user.vibe_subcategories = user_data.vibe_subcategories if hasattr(user_data, 'vibe_subcategories') else None
+                existing_user.looking_for_age_min = user_data.looking_for_age_min
+                existing_user.looking_for_age_max = user_data.looking_for_age_max
+                existing_user.religion = user_data.religion if hasattr(user_data, 'religion') else None
+                existing_user.religion_preferences = user_data.religion_preferences if hasattr(user_data, 'religion_preferences') else None
+                existing_user.q1_core_need = user_data.q1_core_need
+                existing_user.q2_sex_intimacy = user_data.q2_sex_intimacy
+                existing_user.q3_conflict = user_data.q3_conflict
+                existing_user.q4_success_response = user_data.q4_success_response
+                existing_user.q5_gender_roles = user_data.q5_gender_roles
+                existing_user.q6_religion = user_data.q6_religion
+                existing_user.q7_crisis_response = user_data.q7_crisis_response
+                existing_user.q8_emotional_maturity = user_data.q8_emotional_maturity
+                existing_user.custom_questions = user_data.custom_questions if hasattr(user_data, 'custom_questions') else None
+                existing_user.is_registration_complete = user_data.is_registration_complete
+                existing_user.credits_remaining = 0
+                existing_user.photo_reveal_date = datetime.utcnow() + timedelta(hours=24)
+                existing_user.subscription_status = UserStatus.FREE
+                db.commit()
+                db.refresh(existing_user)
+
+                access_token = AuthService.create_access_token(str(existing_user.id), existing_user.email)
+                refresh_token = AuthService.create_refresh_token(str(existing_user.id))
+
+                return {
+                    "access_token": access_token,
+                    "refresh_token": refresh_token,
+                    "token_type": "bearer",
+                    "user_id": str(existing_user.id),
+                    "email": existing_user.email,
+                    "subscription_status": existing_user.subscription_status.value,
+                    "is_registration_complete": existing_user.is_registration_complete,
+                }
+
+            # ACTIVE user → normal "already exists"
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already registered"
@@ -272,6 +331,12 @@ class AuthService:
                 detail="Invalid email or password"
             )
         
+        if user.is_deleted:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This account has been deleted."
+            )
+
         if not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

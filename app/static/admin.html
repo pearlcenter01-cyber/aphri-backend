@@ -356,12 +356,16 @@ async function loadUsers() {
         <td>
           <button class="btn btn-cred" onclick="toggleDetails('${u.id}')">Show</button>
         </td>
-        <td>
+
+          <td>
           ${u.is_active
             ? `<button class="btn btn-ban" onclick="banUser('${u.id}')">Ban</button>`
             : `<button class="btn btn-unban" onclick="unbanUser('${u.id}')">Unban</button>`}
           <button class="btn btn-cred" onclick="adjustCredits('${u.id}', '${esc(u.email)}')">Credits</button>
+          <button class="btn btn-ban" onclick="deleteUser('${u.id}', '${esc(u.email)}')">Delete</button>
         </td>
+
+
       </tr>
       <tr id="details-${u.id}" class="hidden">
         <td colspan="6">
@@ -469,6 +473,18 @@ async function unbanUser(id) {
   await api(`/users/${id}/unban`, { method: "PUT" });
   loadUsers(); loadStats();
 }
+
+
+async function deleteUser(id, email) {
+  if (!confirm(`Soft-delete ${email}?\n\nThey will be able to register again with the same email.`)) return;
+  try {
+    await api(`/users/${id}`, { method: "DELETE" });
+    loadUsers(); loadStats();
+  } catch (e) { alert(e.message); }
+}
+
+
+
 async function adjustCredits(id, email) {
   const v = prompt(`Adjust credits for ${email}\nEnter a positive or negative number (e.g. 50 or -20):`);
   if (v === null) return;
