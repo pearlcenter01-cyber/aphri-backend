@@ -26,6 +26,7 @@ class Message(Base):
     message_type = Column(String(20), default=MessageType.TEXT)
     content = Column(Text, nullable=True)  # For text messages
     media_url = Column(String(512), nullable=True)  # For photo/video
+    media_type = Column(String(20), nullable=True)
     media_thumbnail = Column(String(512), nullable=True)  # Thumbnail for media
     session_id = Column(String(36), nullable=True)  # ✅ ADD THIS - for compatibility requests
     
@@ -37,6 +38,7 @@ class Message(Base):
     is_delivered = Column(Boolean, default=False)
     delivered_at = Column(DateTime, nullable=True)
     is_deleted = Column(Boolean, default=False)
+    is_edited = Column(Boolean, default=False)
     
     # ============================================================
     # TIMESTAMPS

@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-
+from app.api import messages
 from app.routers import matches
 from app.config import settings
 from app.database import engine, Base
@@ -111,6 +111,7 @@ from app.routers import (
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(compatibility.router, prefix="/api/compatibility", tags=["Compatibility"])
+app.include_router(messages.router, prefix="/api/messages", tags=["messages"])
 app.include_router(profiles.router, prefix="/api/profiles", tags=["Profiles"])
 app.include_router(photos.router, prefix="/api/photos", tags=["Photos"])
 app.include_router(swipes.router, prefix="/api/swipes", tags=["Swipes"])

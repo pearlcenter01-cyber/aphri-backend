@@ -166,6 +166,8 @@ async def send_message(
     content = request.get("content")
     message_type = request.get("message_type", "text")
     session_id = request.get("session_id")
+    media_url = request.get("media_url")
+    media_thumbnail = request.get("media_thumbnail")
     
     # Handle both string and dict content
     if isinstance(content, dict):
@@ -173,7 +175,7 @@ async def send_message(
     else:
         content_text = content
     
-    if not content_text or not content_text.strip():
+    if (not content_text or not content_text.strip()) and not media_url:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Message content is required"
@@ -204,8 +206,8 @@ async def send_message(
     receiver_id,
     content_text,
     message_type,
-    None,  # media_url
-    None,  # media_thumbnail
+    media_url,
+    media_thumbnail,
     session_id  # ✅ session_id goes here
 )
     

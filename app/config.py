@@ -55,6 +55,15 @@ class Settings:
     AWS_SECRET_ACCESS_KEY: str = os.getenv("AWS_SECRET_ACCESS_KEY", "")
     AWS_REGION: str = os.getenv("AWS_REGION", "us-east-1")
     AWS_BUCKET_NAME: str = os.getenv("AWS_BUCKET_NAME", "aphri-photos")
+
+    # ============================================================
+    # CLOUDFLARE R2 - MEDIA STORAGE (chat attachments)
+    # ============================================================
+    R2_ACCESS_KEY_ID: str = os.getenv("R2_ACCESS_KEY_ID", "")
+    R2_SECRET_ACCESS_KEY: str = os.getenv("R2_SECRET_ACCESS_KEY", "")
+    R2_ENDPOINT: str = os.getenv("R2_ENDPOINT", "")
+    R2_BUCKET: str = os.getenv("R2_BUCKET", "aphri-media")
+    R2_PUBLIC_URL: str = os.getenv("R2_PUBLIC_URL", "")
     
     # ============================================================
     # PUSH NOTIFICATIONS
