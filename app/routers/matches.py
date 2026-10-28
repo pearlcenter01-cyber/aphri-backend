@@ -755,11 +755,14 @@ async def get_game_questions(
             return bool(r and r.is_answered and r.rating is not None)
 
         def is_round_released(idx: int) -> bool:
+            print(f"🔒 is_round_released called idx={idx}")
             for lower in range(idx):
-                if not is_resolved(user_uuid_str, candidate_uuid_str, lower):
+                row = row_for(user_uuid_str, candidate_uuid_str, lower)
+                if row is None or not row.is_answered or row.rating is None:
+                #if not is_resolved(user_uuid_str, candidate_uuid_str, lower):
                     return False
-                if not is_resolved(candidate_uuid_str, user_uuid_str, lower):
-                    return False
+                #if not is_resolved(candidate_uuid_str, user_uuid_str, lower):
+                    #return False
             return True
 
         timeline = []
